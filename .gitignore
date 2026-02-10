@@ -1,0 +1,22 @@
+# 1. 屏蔽 CLion/IDE 的配置文件 (你的截图里肯定有这个)
+.idea/
+.vscode/
+*.swp
+
+# 2. 屏蔽编译生成的垃圾文件夹 (截图里那个黄色的文件夹)
+cmake-build-debug/
+build/
+bin/
+lib/
+
+# 3. 屏蔽编译产生的中间文件
+*.o
+*.obj
+*.exe
+*.out
+*.dylib
+*.dll
+
+# 4. 屏蔽系统文件
+.DS_Store
+Thumbs.db
