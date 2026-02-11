@@ -1,22 +1,42 @@
-# 1. 屏蔽 CLion/IDE 的配置文件 (你的截图里肯定有这个)
+# 1. 屏蔽 IDE 配置文件
 .idea/
 .vscode/
 *.swp
+*.swo
 
-# 2. 屏蔽编译生成的垃圾文件夹 (截图里那个黄色的文件夹)
-cmake-build-debug/
+# 2. 屏蔽编译生成的目录
+# 在 CMake 项目中，这两个是最核心需要屏蔽的
 build/
+cmake-build-*/
 bin/
 lib/
 
-# 3. 屏蔽编译产生的中间文件
+# 3. 屏蔽编译产生的中间文件与可执行文件
 *.o
 *.obj
 *.exe
 *.out
 *.dylib
 *.dll
+*.so
+*.a
+*.lib
 
-# 4. 屏蔽系统文件
+# 4. 屏蔽系统文件与日志
 .DS_Store
 Thumbs.db
+*.log
+
+# 5. 屏蔽 CMake 自动生成的文件
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+# 这里的 Makefile 是指误在根目录生成的那个
+/Makefile
+
+# 6. 屏蔽根目录下手动编译生成的无后缀可执行文件 (精准匹配你截图里的问号文件)
+/01_raw_memory
+/02_allocator
+/03_buffer
+# 如果你经常在根目录编译，可以用通配符（屏蔽开头是数字的文件）
+/[0-9]*

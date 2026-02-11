@@ -1,6 +1,11 @@
 cmake_minimum_required(VERSION 3.22)
 project(hxinfer)
+# 将所有可执行文件统一输出到构建目录下的 bin 文件夹中
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
+# 如果你有生成库文件，也可以统一存放
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_CXX_STANDARD 17)
 
 # 1. 寻找 CUDA
