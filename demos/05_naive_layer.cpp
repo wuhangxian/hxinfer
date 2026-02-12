@@ -16,6 +16,7 @@ public:
     void* allocate(size_t byte_size) override{
         void* ptr=malloc(byte_size);
         if(ptr== nullptr){
+            std::cerr<<"未申请到地址"<<std::endl;
             return nullptr;
         }
         memset(ptr,0,byte_size);
