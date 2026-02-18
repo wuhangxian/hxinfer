@@ -11,7 +11,8 @@ public:
     virtual ~Allocator(){};
 };
 
-class CPUAllocatr:public Allocator{
+class CPUAllocator:public Allocator{
+public:
     void *allocate(size_t byte_size) override{
         void *ptr=malloc(byte_size);
         if(ptr== nullptr){
