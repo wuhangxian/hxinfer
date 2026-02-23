@@ -116,7 +116,7 @@ public:
     Layer(std::string layer_name):layer_name_(layer_name){}
     virtual void forward(std::shared_ptr<Tensor> input,
                          std::shared_ptr<Tensor> output)=0;
-    ~Layer(){}
+    virtual ~Layer(){}
 };
 
 class RMSNormLayer:public Layer{
