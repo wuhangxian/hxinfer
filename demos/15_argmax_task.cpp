@@ -143,7 +143,6 @@ public:
         out_ptr[0]=(float )max_index;
     }
 };
-
 int main(){
     std::shared_ptr<Allocator> allocator=std::make_shared<CPUAllocator>();
     std::shared_ptr<Tensor> input=std::make_shared<Tensor>(std::vector<int> {6},allocator);
