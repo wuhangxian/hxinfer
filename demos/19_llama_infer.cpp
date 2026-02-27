@@ -473,7 +473,7 @@ int main() {
     std::vector<int> history;
     history.push_back(1); // 塞入 <s> 起始符
 
-    int target_steps = 300;
+    int target_steps = 200;
 
     // 🌟 记录整场推理的总开始时间
     auto start_all = std::chrono::high_resolution_clock::now();
