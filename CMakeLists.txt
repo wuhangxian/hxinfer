@@ -1,38 +1,45 @@
-cmake_minimum_required(VERSION 3.22)
-project(hxinfer)
-# 将所有可执行文件统一输出到构建目录下的 bin 文件夹中
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+# 1. 指定最低 CMake 版本要求
+cmake_minimum_required(VERSION 3.15)
 
-# 如果你有生成库文件，也可以统一存放
-set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
-set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
+# 2. 定义工程名称和支持的语言
+# 【预警】你现在只切分 C++ 代码，所以只写 CXX。
+# 【下午开工 CUDA 时】：把它改成 project(hxinfer LANGUAGES CXX CUDA)
+project(hxinfer LANGUAGES CXX)
+
+# 3. 强制使用 C++17 标准
 set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
 
-# 1. 寻找 CUDA
-find_package(CUDA REQUIRED)
-# ### 新增：寻找 glog 库 ###
-find_package(glog REQUIRED)
+# 4. 开启暴力优化！-O3 是必须的，否则大模型推理会慢得像蜗牛
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -Wall -Wextra -pthread")
 
-include_directories(${CUDA_INCLUDE_DIRS})
-# -----------------------------------------------------------
-# 🔥 关键修改：告诉编译器去项目的 include 文件夹下找头文件
-# -----------------------------------------------------------
-include_directories(include)
+# =====================================================================
+# 核心目录配置区
+# =====================================================================
 
-# 自动搜集源文件（可选，但推荐，方便以后加新文件）
-# file(GLOB_RECURSE SRC_FILES "src/*.cpp")
+# 5. 告诉编译器“菜单”在哪里：默认去 include/ 文件夹下找头文件
+include_directories(${CMAKE_SOURCE_DIR}/include)
 
-# 生成可执行文件
-add_executable(hxinfer
+# 6. 自动收集“后厨”的源文件 (不用你新增一个 cpp 就来这里改一行)
+# 自动扫描 src/ 目录及其所有子目录下的所有 .cpp 文件
+file(GLOB_RECURSE SRC_FILES "src/*.cpp")
+
+# 【下午开工 CUDA 时】：把下面这行注释打开，自动扫描所有的 .cu 核函数文件
+# file(GLOB_RECURSE CU_FILES "src/*.cu")
+
+# =====================================================================
+# 编译产物输出区
+# =====================================================================
+
+# 7. 生成最终的引擎执行程序
+# 假设你的点火入口程序放到了 demo/main.cpp 里
+add_executable(hxinfer_engine
         main.cpp
-        # include/base/allocator.h  <-- 头文件其实不需要写在这里，只要上面有了 include_directories 即可
+        ${SRC_FILES}
+        # ${CU_FILES}  <-- 下午写 CUDA 时，把这行的注释也打开
+
 )
 
-target_link_libraries(hxinfer
-        ${CUDA_LIBRARIES}
-        glog::glog
-)
-
-# === Playground ===
-# 这一行是告诉编译器：我要把 playground/01_raw_memory.cpp 编译成一个叫 "step1" 的可执行程序
-add_executable(step1 playground/01_raw_memory.cpp)
+# 8. 链接标准数学库 (Linux 环境下某些底层数学函数需要手动链接 -lm)
+target_link_libraries(hxinfer_engine m)
