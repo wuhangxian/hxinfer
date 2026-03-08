@@ -28,9 +28,14 @@ namespace hxinfer{
         if(type_b!=type_out){
             throw std::runtime_error("mul_tensor的input_b与output数据类型不匹配!\n");
         }
-        auto mul_logic=[](const auto *ptr_a,const auto *ptr_b,auto *ptr_out,size_t total_elements){
+        auto mul_logic=[](const auto *ptr_a,
+                const auto *ptr_b,auto *ptr_out,size_t total_elements){
+            using OutType=std::decay_t<decltype(*ptr_out)>;
             for(size_t i=0;i<total_elements;i++){
-                ptr_out[i]=ptr_a[i]*ptr_b[i];
+                float val_a=ptr_a[i];
+                float val_b=ptr_a[i];
+                float val_out=val_a*val_b;
+                ptr_out[i]=static_cast<OutType>(val_out);
             }
         };
         HXINFER_DISPATCH_ALL_TYPES(type_a,"mul_tensor",[&](){

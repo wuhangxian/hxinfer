@@ -14,11 +14,6 @@
             __VA_ARGS__(); \
             break; \
         } \
-        case DataType::kDataTypeInt8: { \
-            using scalar_t = int8_t; \
-            __VA_ARGS__(); \
-            break; \
-        } \
         default: \
             throw std::runtime_error(std::string(op_name) + " 遇到了不支持的数据类型!"); \
     }

@@ -27,9 +27,26 @@ namespace hxinfer{
         if(type_b!=type_out){
             throw std::runtime_error("add_tensor的input_b与output数据类型不匹配!\n");
         }
-        auto add_logic=[](const auto* ptr_a,const auto* ptr_b,auto* ptr_out,size_t total_elements){
-            for(size_t i=0;i<total_elements;i++){
-                ptr_out[i]=ptr_a[i]+ptr_b[i];
+// 🚀 核心改造：工业级的 Upcasting 计算逻辑
+        auto add_logic = [](const auto* ptr_a, const auto* ptr_b, auto* ptr_out, size_t total_elements) {
+            // 获取输出指针的真实物理类型 (比如 float16_t, float 等)
+            // TODO 暂时只是进行了输出类型的强转,
+            //  这是不完善的,对于不同类型的数据应该有对应的逻辑
+            using OutType = std::decay_t<decltype(*ptr_out)>;
+
+            for (size_t i = 0; i < total_elements; i++) {
+                // 第一步：物理层 -> 数学层 (Upcasting 精度上拉)
+                // 不管指针指向的是 2 字节还是 4 字节，统统安全转换为标准的 4 字节 float
+                float val_a = static_cast<float>(ptr_a[i]);
+                float val_b = static_cast<float>(ptr_b[i]);
+
+                // 第二步：工作台纯计算
+                // 在 FP32 域进行极其安全的数学加法，绝对不会发生 FP16 容易出现的溢出！
+                float val_out = val_a + val_b;
+
+                // 第三步：数学层 -> 物理层 (Downcasting 精度下调)
+                // 将极其精确的 FP32 结果，强转回目标类型，塞回物理内存
+                ptr_out[i] = static_cast<OutType>(val_out);
             }
         };
         HXINFER_DISPATCH_ALL_TYPES(type_a,"add_tensor",[&](){
@@ -39,13 +56,5 @@ namespace hxinfer{
                     output->tensor_total_elements());
         });
     }
-    void matmul_tensor(const std::shared_ptr<Tensor>& input,const std::shared_ptr<Tensor>& weight,
-                       std::shared_ptr<Tensor>& output);
-    void rope_tensor(std::shared_ptr<Tensor>& q,std::shared_ptr<Tensor>& k,int step);
-    void rmsnorm_tensor(const std::shared_ptr<Tensor>& input,const std::shared_ptr<Tensor> weight,
-                        std::shared_ptr<Tensor>& output);
-    void embedding_tensor(const std::shared_ptr<Tensor>& token_ids,const std::shared_ptr<Tensor>& weight,
-                          std::shared_ptr<Tensor>& output);
-    void silu_tensor(const std::shared_ptr<Tensor>& input,std::shared_ptr<Tensor>& output);
-    int  argmax_tensor(const std::shared_ptr<Tensor>& input);
+
 }
