@@ -24,7 +24,6 @@ include_directories(${CMAKE_SOURCE_DIR}/include)
 # 6. 自动收集“后厨”的源文件 (不用你新增一个 cpp 就来这里改一行)
 # 自动扫描 src/ 目录及其所有子目录下的所有 .cpp 文件
 file(GLOB_RECURSE SRC_FILES "src/*.cpp")
-
 # 【下午开工 CUDA 时】：把下面这行注释打开，自动扫描所有的 .cu 核函数文件
 # file(GLOB_RECURSE CU_FILES "src/*.cu")
 

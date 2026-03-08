@@ -8,7 +8,7 @@ namespace hxinfer{
         virtual void release(void* ptr)=0;
         virtual ~Allocator()=default;
     };
-    class CPUAllocator{
+    class CPUAllocator:public Allocator{
         void* allocate(size_t byte_size);
         void release(void* ptr);
     };
