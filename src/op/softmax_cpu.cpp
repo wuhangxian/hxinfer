@@ -37,7 +37,7 @@ namespace hxinfer{
                 out_ptr[i]=static_cast<OutType>(final_prob);
             }
         };
-        HXINFER_DISPATCH_ALL_TYPES(type_output,"softmax",[&]{
+        HXINFER_DISPATCH_ALL_TYPES(type_output,"softmax",[&](){
             softmax_logic(input->tensor_data_ptr<scalar_t >(),
                     output->tensor_data_ptr<scalar_t>(),
                     output->tensor_total_elements());

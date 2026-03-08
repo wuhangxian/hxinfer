@@ -13,7 +13,7 @@ namespace hxinfer{
                 ptr_out[i]=static_cast<OutType>(result_val);
             }
         };
-        HXINFER_DISPATCH_ALL_TYPES(type_out,"silu",[&]{
+        HXINFER_DISPATCH_ALL_TYPES(type_out,"silu",[&](){
             silu_logic(input->tensor_data_ptr<scalar_t>(),
                     output->tensor_data_ptr<scalar_t>());
         });

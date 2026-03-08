@@ -26,7 +26,7 @@ namespace hxinfer{
                 }
             }
         };
-        HXINFER_DISPATCH_ALL_TYPES(type_out,"rmsnorm",[&]{
+        HXINFER_DISPATCH_ALL_TYPES(type_out,"rmsnorm",[&](){
             rmsnorm_logic(input->tensor_data_ptr<scalar_t>(),
             weight->tensor_data_ptr<scalar_t>(),
             output->tensor_data_ptr<scalar_t>());
