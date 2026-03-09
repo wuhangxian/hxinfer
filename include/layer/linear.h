@@ -1,6 +1,6 @@
 
-#ifndef HXINFER_LINEARLAYER_H
-#define HXINFER_LINEARLAYER_H
+#ifndef HXINFER_LINEAR_H
+#define HXINFER_LINEAR_H
 
 #include "layer.h"
 #include "op/math_ops.h"
@@ -17,4 +17,4 @@ namespace hxinfer{
     };
 }
 
-#endif //HXINFER_LINEARLAYER_H
+#endif //HXINFER_LINEAR_H

@@ -1,7 +1,7 @@
 #ifndef HXINFER_SWIGLU_H
 #define HXINFER_SWIGLU_H
 #include "layer.h"
-#include "linearlayer.h"
+#include "linear.h"
 namespace hxinfer{
     class SwigluLayer: public Layer{
     private:
