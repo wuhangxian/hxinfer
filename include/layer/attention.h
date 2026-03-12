@@ -27,7 +27,7 @@ namespace hxinfer{
         ModelConfig config_;
     public:
         AttentionLayer(std::shared_ptr<Allocator> allocator,ModelConfig& config,std::shared_ptr<Tensor>& wq,
-                       std::shared_ptr<Tensor> wk,std::shared_ptr<Tensor> wv,std::shared_ptr<Tensor> wo):
+                       std::shared_ptr<Tensor>& wk,std::shared_ptr<Tensor>& wv,std::shared_ptr<Tensor>& wo):
                 Layer("Attention"), config_(config),wq_(wq),wk_(wk),wv_(wv),wo_(wo){
             int dim=config_.dim;
             int max_seq_len=config_.seq_len;
@@ -35,7 +35,7 @@ namespace hxinfer{
             std::vector<int> qkv_shapes={1,dim};
             DataType dtype=wq_->tensor_data_type();
 
-            std::vector<int> curr_shapes={max_seq_len,dim};
+            std::vector<int> curr_shapes={1,dim};
             curr_q_=std::make_shared<Tensor>(allocator,curr_shapes,dtype);
             curr_k_=std::make_shared<Tensor>(allocator,curr_shapes,dtype);
             curr_v_=std::make_shared<Tensor>(allocator,curr_shapes,dtype);
@@ -55,9 +55,9 @@ namespace hxinfer{
 
         }
 
-        void forward(std::shared_ptr<Tensor> input,std::shared_ptr<Tensor> output,int pos);
+        void forward(std::shared_ptr<Tensor>& input,std::shared_ptr<Tensor>& output,int pos);
         // 🚀 补上这份“基础合同”，红线瞬间灰飞烟灭！
-        void forward(std::shared_ptr<Tensor> input, std::shared_ptr<Tensor> output) override {
+        void forward(std::shared_ptr<Tensor>& input, std::shared_ptr<Tensor>& output) override {
             // 因为我们强制要求带 pos，如果有人调错版本，直接报错
             throw std::runtime_error("AttentionLayer requires 'pos' parameter!\n");
         }

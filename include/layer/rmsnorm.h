@@ -8,7 +8,7 @@ namespace hxinfer{
         std::shared_ptr<Tensor> weight_;
     public:
         RMSNormLayer(std::shared_ptr<Tensor> weight): Layer("RMSNorm"),weight_(weight){};
-        void forward(std::shared_ptr<Tensor> input,std::shared_ptr<Tensor> output) override{
+        void forward(std::shared_ptr<Tensor>& input,std::shared_ptr<Tensor>& output) override{
             rmsnorm_tensor(input,weight_,output);
         }
     };

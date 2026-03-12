@@ -44,6 +44,15 @@ namespace hxinfer{
         T* tensor_data_ptr(){
             return static_cast<T*>(buffer_->buffer_data_ptr());
         }
+
+        // 新增的方法（专门用于 memcpy, mmap 等不需要知道类型的物理内存操作）
+        const void* raw_data_ptr() const {
+            return buffer_->buffer_data_ptr();
+        }
+        void* raw_data_ptr() {
+            return buffer_->buffer_data_ptr();
+        }
+
         void tensor_print_data();
     };
 }

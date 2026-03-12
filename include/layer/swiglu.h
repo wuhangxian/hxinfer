@@ -21,7 +21,7 @@ namespace hxinfer{
     public:
         SwigluLayer(std::shared_ptr<Allocator> allocator,ModelConfig& config,std::shared_ptr<Tensor>& w_gate,
                     std::shared_ptr<Tensor>& w_up,std::shared_ptr<Tensor>& w_down);
-        void forward(std::shared_ptr<Tensor> input,std::shared_ptr<Tensor> output) override;
+        void forward(std::shared_ptr<Tensor>& input,std::shared_ptr<Tensor>& output) override;
     };
 }
 

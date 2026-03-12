@@ -11,7 +11,7 @@ namespace hxinfer{
     public:
         LinearLayer(std::shared_ptr<Tensor> weight): Layer("Linear"),
                                                      weight_(weight){}
-        void forward(std::shared_ptr<Tensor> input,std::shared_ptr<Tensor> output) override{
+        void forward(std::shared_ptr<Tensor>& input,std::shared_ptr<Tensor>& output) override{
             matmul_tensor(input,weight_,output);
         }
     };

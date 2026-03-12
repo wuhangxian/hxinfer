@@ -28,7 +28,7 @@ namespace hxinfer{
             int dim=config_.dim;
             int max_seq_len=config_.seq_len;
             DataType dtype=wq->tensor_data_type();
-            std::vector<int> buffer_shapes={max_seq_len,dim};
+            std::vector<int> buffer_shapes={1,dim};
 
             norm_out_=std::make_shared<Tensor>(allocator,buffer_shapes,dtype);
             attn_out_=std::make_shared<Tensor>(allocator,buffer_shapes,dtype);
@@ -42,10 +42,10 @@ namespace hxinfer{
         }
 
         // 🚀 1. 这是你真正用来干活的流水线！(带 pos)
-        void forward(std::shared_ptr<Tensor> input, std::shared_ptr<Tensor> output, int pos);
+        void forward(std::shared_ptr<Tensor>& input, std::shared_ptr<Tensor>& output, int pos);
 
         // 🚀 2. 这是糊弄编译器的“基础合同”，防止 TransformerLayer 变成抽象类报错！
-        void forward(std::shared_ptr<Tensor> input, std::shared_ptr<Tensor> output) override {
+        void forward(std::shared_ptr<Tensor>& input, std::shared_ptr<Tensor>& output) override {
             throw std::runtime_error("TransformerLayer requires 'pos' parameter! Please use the 3-parameter version.\n");
         }
     };

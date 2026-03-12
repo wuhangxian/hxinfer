@@ -20,7 +20,7 @@ namespace hxinfer{
     struct ModelConfig{
         int dim;
         int hidden_dim;
-        int laye;
+        int layer;
         int head;
         int kv_head;
         int vocab_size;

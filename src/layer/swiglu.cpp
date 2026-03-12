@@ -15,7 +15,7 @@ namespace hxinfer{
         up_proj_   = std::make_shared<LinearLayer>(w_up_);
         down_proj_ = std::make_shared<LinearLayer>(w_down_);
     }
-    void SwigluLayer::forward(std::shared_ptr<Tensor> input,std::shared_ptr<Tensor> output){
+    void SwigluLayer::forward(std::shared_ptr<Tensor>& input,std::shared_ptr<Tensor>& output){
     std::vector<int> in_shapes=input->tensor_shapes();
     int dim=config_.dim;
     int hidden_dim=config_.hidden_dim;

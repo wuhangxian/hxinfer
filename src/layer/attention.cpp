@@ -2,7 +2,7 @@
 #include "op/math_ops.h"
 #include "cmath"
 namespace hxinfer{
-    void AttentionLayer::forward(std::shared_ptr<Tensor> input, std::shared_ptr<Tensor> output, int pos) {
+    void AttentionLayer::forward(std::shared_ptr<Tensor>& input, std::shared_ptr<Tensor>& output, int pos) {
         int dim=config_.dim;
         int head=config_.head;
         int head_dim=dim/head;
