@@ -32,9 +32,7 @@ namespace hxinfer{
             int dim=config_.dim;
             int max_seq_len=config_.seq_len;
             int head=config_.head;
-            std::vector<int> qkv_shapes={1,dim};
             DataType dtype=wq_->tensor_data_type();
-
             std::vector<int> curr_shapes={1,dim};
             curr_q_=std::make_shared<Tensor>(allocator,curr_shapes,dtype);
             curr_k_=std::make_shared<Tensor>(allocator,curr_shapes,dtype);

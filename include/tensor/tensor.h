@@ -17,6 +17,7 @@ namespace hxinfer{
         size_t total_elements_;
         size_t total_byte_size_;
         std::shared_ptr<Buffer> buffer_;
+        DeviceType device_type_=DeviceType::kDeviceCPU;
     public:
         Tensor(std::shared_ptr<Allocator> allocator,std::vector<int> shapes,DataType data_type);
         ~Tensor()=default;
@@ -24,6 +25,9 @@ namespace hxinfer{
         DataType tensor_data_type() const{return data_type_;}
         size_t tensor_total_elements() const{return total_elements_;}
         size_t tensor_total_byte_size() const{return total_byte_size_;}
+
+        DeviceType deviceType() const{return device_type_;}
+        void set_device_type(DeviceType type){device_type_=type;}
         void tensor_reshape(std::vector<int> new_shapes){
             size_t new_total_elements=std::accumulate(new_shapes.begin(),new_shapes.end(),size_t{1},
                                                       std::multiplies<>());
@@ -54,6 +58,9 @@ namespace hxinfer{
         }
 
         void tensor_print_data();
+
+        std::shared_ptr<Tensor> to_cuda(std::shared_ptr<CUDAAllocator> cuda_allocator);
+        std::shared_ptr<Tensor> to_cpu(std::shared_ptr<CPUAllocator> cpu_allocator);
     };
 }
 

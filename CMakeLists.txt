@@ -1,44 +1,96 @@
 # 1. 指定最低 CMake 版本要求
-cmake_minimum_required(VERSION 3.15)
+cmake_minimum_required(VERSION 3.16)
 
-# 2. 定义工程名称和支持的语言
-# 【预警】你现在只切分 C++ 代码，所以只写 CXX。
-# 【下午开工 CUDA 时】：把它改成 project(hxinfer LANGUAGES CXX CUDA)
-project(hxinfer LANGUAGES CXX)
+# 【关键点 1】强行指定 nvcc 路径（请确保这真的是你 which nvcc 查出来的路径！）
+set(CMAKE_CUDA_COMPILER "/usr/local/cuda-12.1/bin/nvcc")
+
+# 【关键点 2】把架构声明提前到 project 之前，防止某些 CMake 版本发神经
+set(CMAKE_CUDA_ARCHITECTURES "89")
+
+# 2. 定义工程名称，正式开启异构双语支持
+project(hxinfer LANGUAGES CXX CUDA)
+
+# 确保 CUDA 也是 C++17 标准
+set(CMAKE_CUDA_STANDARD 17)
+set(CMAKE_CUDA_STANDARD_REQUIRED ON)
+
+# =====================================================================
+# 🚨 紧急避险：彻底关闭 Unity Build！
+# Unity Build 会把多个代码文件强行拼成一个大文件编译。
+# 刚引入 CUDA 时，极容易引发内部函数的“Multiple definition（重复定义）”等一大堆玄学报错。
+# =====================================================================
+set(CMAKE_UNITY_BUILD OFF)
+# set(CMAKE_UNITY_BUILD_BATCH_SIZE 100) # 这行也注释掉作废
+
+# 寻找本地安装的 CUDA 工具链
+find_package(CUDAToolkit REQUIRED)
 
 # 3. 强制使用 C++17 标准
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-# 4. 开启暴力优化！-O3 是必须的，否则大模型推理会慢得像蜗牛
+# 4. 开启暴力优化
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -Wall -Wextra -pthread")
+# 暂时先关掉跨文件优化，等 CUDA 跑通了再开，减少干扰
+set(CMAKE_INTERPROCEDURAL_OPTIMIZATION FALSE)
 
-# =====================================================================
-# 核心目录配置区
-# =====================================================================
-
-# 5. 告诉编译器“菜单”在哪里：默认去 include/ 文件夹下找头文件
+# 5. 告诉编译器“菜单”在哪里
 include_directories(${CMAKE_SOURCE_DIR}/include)
 
-# 6. 自动收集“后厨”的源文件 (不用你新增一个 cpp 就来这里改一行)
-# 自动扫描 src/ 目录及其所有子目录下的所有 .cpp 文件
+# =====================================================================
+# 核心源码收集区
+# =====================================================================
+# 6. 自动收集“后厨”的源文件
 file(GLOB_RECURSE SRC_FILES "src/*.cpp")
-# 【下午开工 CUDA 时】：把下面这行注释打开，自动扫描所有的 .cu 核函数文件
-# file(GLOB_RECURSE CU_FILES "src/*.cu")
+file(GLOB_RECURSE CU_FILES "src/*.cu")
 
 # =====================================================================
-# 编译产物输出区
+# 🛠️ 架构大升级：将核心源码打包成静态库 (STATIC Library)
 # =====================================================================
-
-# 7. 生成最终的引擎执行程序
-# 假设你的点火入口程序放到了 demo/main.cpp 里
-add_executable(hxinfer_engine
-        main.cpp
+# 7. 把所有的算子、分配器、张量，炼制成一个纯粹的底层引擎库：hxinfer_core
+add_library(hxinfer_core STATIC
         ${SRC_FILES}
-        # ${CU_FILES}  <-- 下午写 CUDA 时，把这行的注释也打开
-
+        ${CU_FILES}
 )
 
-# 8. 链接标准数学库 (Linux 环境下某些底层数学函数需要手动链接 -lm)
-target_link_libraries(hxinfer_engine m)
+# 8. 为引擎库装配底层依赖（CUDA 和 数学库）
+target_link_libraries(hxinfer_core
+        m
+        CUDA::cudart
+        CUDA::cublas
+)
+
+# =====================================================================
+# 🚀 主力执行程序：点火入口
+# =====================================================================
+# 9. 主引擎现在变得极其轻量，它只包含入口的 main.cpp
+add_executable(hxinfer_engine main.cpp)
+
+# 10. 将核心引擎库“装载”到主引擎中
+target_link_libraries(hxinfer_engine hxinfer_core)
+
+# =====================================================================
+# 🧪 自动化测试引擎 (Demos)
+# =====================================================================
+# 1. 自动收集 demos 目录下所有的 .cpp 和 .cu 文件
+file(GLOB DEMO_SOURCES "demos/*.cpp" "demos/*.cu")
+
+# 2. 开启 for 循环，遍历每一个 Demo
+foreach(demo_src ${DEMO_SOURCES})
+
+    # 3. 提取纯文件名作为 Target 名称
+    get_filename_component(demo_name ${demo_src} NAME_WE)
+
+    # 4. 注册可执行目标
+    add_executable(${demo_name} ${demo_src})
+
+    # 5. 【修复核心】所有的 Demo 现在链接的是 hxinfer_core 库！
+    # 同时加上 CUDA 运行时，防止底层 API 找不到
+    target_link_libraries(${demo_name}
+            hxinfer_core
+            CUDA::cudart
+            CUDA::cublas
+    )
+
+endforeach()

@@ -414,6 +414,10 @@ private:
     std::shared_ptr<Tensor> up_weight_;
     std::shared_ptr<Tensor> down_weight_;
 
+    std::shared_ptr<LinearLayer> gate_proj_;
+    std::shared_ptr<LinearLayer> up_proj_;
+    std::shared_ptr<LinearLayer> down_proj_;
+
     std::shared_ptr<Tensor> after_gate_;
     std::shared_ptr<Tensor> after_up_;
 
@@ -427,6 +431,9 @@ public:
         down_weight_=std::make_shared<Tensor>(std::vector<int>{config_.dim,config_.hidden_dim},allocator_);
         after_gate_=std::make_shared<Tensor>(std::vector<int>{config_.seq_len,config_.hidden_dim},allocator_);
         after_up_=std::make_shared<Tensor>(std::vector<int>{config_.seq_len,config_.hidden_dim},allocator_);
+        gate_proj_=std::make_shared<LinearLayer>(gate_weight_);
+        up_proj_=std::make_shared<LinearLayer>(up_weight_);
+        down_proj_=std::make_shared<LinearLayer>(down_weight_);
     }
     float *get_gate_weight_ptr(){
         return static_cast<float *>(gate_weight_->tensor_data_ptr());
@@ -443,9 +450,6 @@ public:
         std::vector<int> curr_shapes={curr_seq_len,hidden_dim};
         after_gate_->tensor_reshape(curr_shapes);
         after_up_->tensor_reshape(curr_shapes);
-        std::shared_ptr<LinearLayer> gate_proj_=std::make_shared<LinearLayer>(gate_weight_);
-        std::shared_ptr<LinearLayer> up_proj_=std::make_shared<LinearLayer>(up_weight_);
-        std::shared_ptr<LinearLayer> down_proj_=std::make_shared<LinearLayer>(down_weight_);
         gate_proj_->forward(input,after_gate_);
         up_proj_->forward(input,after_up_);
         MathOps::silu_tensor(after_gate_,after_gate_);
@@ -574,6 +578,11 @@ private:
     std::shared_ptr<Tensor> after_qkt_;
     std::shared_ptr<Tensor> after_qktv_;
 
+    std::shared_ptr<LinearLayer> q_proj_;
+    std::shared_ptr<LinearLayer> k_proj_;
+    std::shared_ptr<LinearLayer> v_proj_;
+    std::shared_ptr<LinearLayer> o_proj_;
+
     ModelConfig config_;
     int step_=0;
     std::shared_ptr<Tensor> k_cache_;
@@ -590,6 +599,11 @@ public:
         k_=std::make_shared<Tensor>(qkvo_shapes,allocator);
         v_=std::make_shared<Tensor>(qkvo_shapes,allocator);
         o_=std::make_shared<Tensor>(qkvo_shapes,allocator);
+
+        q_proj_=std::make_shared<LinearLayer>(q_);
+        k_proj_=std::make_shared<LinearLayer>(k_);
+        v_proj_=std::make_shared<LinearLayer>(v_);
+        o_proj_=std::make_shared<LinearLayer>(o_);
         after_q_=std::make_shared<Tensor>(after_qkv_shapes,allocator);
         after_k_=std::make_shared<Tensor>(after_qkv_shapes,allocator);
         after_v_=std::make_shared<Tensor>(after_qkv_shapes,allocator);
@@ -611,14 +625,10 @@ public:
         return static_cast<float *>(o_->tensor_data_ptr());
     }
     void forward(std::shared_ptr<Tensor> input,std::shared_ptr<Tensor> output) override{
-        std::shared_ptr<LinearLayer> q_proj_=std::make_shared<LinearLayer>(q_);
-        std::shared_ptr<LinearLayer> k_proj_=std::make_shared<LinearLayer>(k_);
-        std::shared_ptr<LinearLayer> v_proj_=std::make_shared<LinearLayer>(v_);
-        std::shared_ptr<LinearLayer> o_proj_=std::make_shared<LinearLayer>(o_);
         q_proj_->forward(input,after_q_);
         k_proj_->forward(input,after_k_);
         v_proj_->forward(input,after_v_);
-        MathOps::rope_tensor(after_q_,after_k_,config_);
+        MathOps::rope_tensor(after_q_,after_k_,config_,10000,step_);
         float *k_ptr=static_cast<float *>(after_k_->tensor_data_ptr());
         float *v_ptr=static_cast<float *>(after_v_->tensor_data_ptr());
         float *q_ptr=static_cast<float *>(after_q_->tensor_data_ptr());
@@ -747,34 +757,56 @@ public:
     ModelConfig config_;
     std::shared_ptr<Allocator> allocator_;
 
+    std::shared_ptr<Tensor > ping_;
+    std::shared_ptr<Tensor> pang_;
+
     LlamaModel(std::shared_ptr<Allocator> allocator, ModelConfig& config)
             : Layer("LlamaModel"), config_(config), allocator_(allocator) {
-
+        int dim=config_.dim;
+        std::vector<int> pingpang={1,dim};
         embedding_ = std::make_shared<EmbeddingLayer>(allocator, config);
         for (int i = 0; i < config.layer; i++) {
             blocks_.push_back(std::make_shared<LlamaBlock>(allocator, config));
         }
         final_norm_ = std::make_shared<RMSNormLayer>(allocator, config);
         lm_head_ = std::make_shared<LinearLayer>(allocator, config.vocab_size, config.dim, config);
+        ping_=std::make_shared<Tensor>(pingpang,allocator);
+        pang_=std::make_shared<Tensor>(pingpang,allocator);
     }
 
     void forward(std::shared_ptr<Tensor> input_tokens, std::shared_ptr<Tensor> output_logits) override {
         int curr_seq_len = input_tokens->tensor_total_elements();
-        auto hidden = std::make_shared<Tensor>(std::vector<int>{curr_seq_len, config_.dim}, allocator_);
-
+//        auto hidden = std::make_shared<Tensor>(std::vector<int>{curr_seq_len, config_.dim}, allocator_);
+//
+//        // 1. 查字典，变成词向量
+//        embedding_->forward(input_tokens, hidden);
+//
+//        // 2. 依次穿过所有 Transformer Block
+//        for (int i = 0; i < config_.layer; i++) {
+//            blocks_[i]->forward(hidden, hidden);
+//        }
+//
+//        // 3. 最后的归一化
+//        final_norm_->forward(hidden, hidden);
+//
+//        // 4. 预测下一个词的概率分布 (lm_head)
+//        lm_head_->forward(hidden, output_logits);
         // 1. 查字典，变成词向量
-        embedding_->forward(input_tokens, hidden);
+        embedding_->forward(input_tokens, ping_);
 
         // 2. 依次穿过所有 Transformer Block
         for (int i = 0; i < config_.layer; i++) {
-            blocks_[i]->forward(hidden, hidden);
+            blocks_[i]->forward(ping_, pang_);
+            std::swap(ping_,pang_);
         }
 
         // 3. 最后的归一化
-        final_norm_->forward(hidden, hidden);
+        final_norm_->forward(ping_, ping_);
 
         // 4. 预测下一个词的概率分布 (lm_head)
-        lm_head_->forward(hidden, output_logits);
+        lm_head_->forward(ping_, output_logits);
+
+
     }
 };
 

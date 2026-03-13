@@ -1,6 +1,7 @@
 #ifndef HXINFER_ALLOCATOR_H
 #define HXINFER_ALLOCATOR_H
 #include "cstring"
+
 namespace hxinfer{
     class Allocator{
     public:
@@ -8,9 +9,17 @@ namespace hxinfer{
         virtual void release(void* ptr)=0;
         virtual ~Allocator()=default;
     };
+
     class CPUAllocator:public Allocator{
-        void* allocate(size_t byte_size);
-        void release(void* ptr);
+    public:
+        void* allocate(size_t byte_size) override;
+        void release(void* ptr) override;
+    };
+
+    class CUDAAllocator:public Allocator{
+    public:
+        void* allocate(size_t byte_size) override;
+        void release(void* ptr) override;
     };
 }
 

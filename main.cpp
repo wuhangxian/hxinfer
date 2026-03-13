@@ -46,7 +46,7 @@ void run_llama_15m_stories() {
     std::cout << "\n---------------- 📖 童话故事生成开始 ----------------\n" << std::endl;
 
     int current_token_id = 1; // 1 是 LLaMA 的 <BOS> (Begin of Sequence)
-    int max_generate_step = 200; // 生成 200 个词
+    int max_generate_step = 1000; // 生成 200 个词
 
     auto total_start_time = std::chrono::high_resolution_clock::now();
 
@@ -68,6 +68,12 @@ void run_llama_15m_stories() {
 
         // 🗣️ 解码并打印
         std::string word = tokenizer.decode(next_token_id);
+
+        // 🛑 核心刹车逻辑：如果模型吐出了 <EOS> 结束符，立刻终止生成！
+        if (next_token_id == 2) {
+            std::cout << "\n\n[系统提示] 接收到 <EOS> 结束符，模型自然停止生成。" << std::endl;
+            break;
+        }
         if (word == "\n") {
             std::cout << word << std::flush;
         } else {
@@ -80,8 +86,10 @@ void run_llama_15m_stories() {
             std::cout << word << "\033[90m[" << tok_per_sec << " token/s]"<<'\n'<<"\033[0m" << std::flush;
         }
 
+
         // 循环推进
         current_token_id = next_token_id;
+
     }
 
     auto total_end_time = std::chrono::high_resolution_clock::now();

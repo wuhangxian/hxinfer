@@ -15,7 +15,7 @@ namespace hxinfer{
 
     void CPUAllocator::release(void *ptr) {
         if(ptr!= nullptr){
-            release(ptr);
+            free(ptr);
         }
     }
 }

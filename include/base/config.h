@@ -8,6 +8,11 @@ namespace hxinfer{
         kDataTypeInt8=2,
     };
 
+    enum class DeviceType{
+        kDeviceCPU=0,
+        kDeviceCUDA=1
+    };
+
     inline int DataTypeSize(DataType data_type){
         if(data_type==DataType::kDataTypeFP32){
             return sizeof (float );

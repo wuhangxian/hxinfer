@@ -33,7 +33,7 @@ namespace hxinfer{
             using OutType=std::decay_t<decltype(*ptr_out)>;
             for(size_t i=0;i<total_elements;i++){
                 float val_a=ptr_a[i];
-                float val_b=ptr_a[i];
+                float val_b=ptr_b[i];
                 float val_out=val_a*val_b;
                 ptr_out[i]=static_cast<OutType>(val_out);
             }

@@ -25,7 +25,15 @@ namespace hxinfer{
         // 读取头部的 Config
         ModelConfig* file_cfg = reinterpret_cast<ModelConfig*>(data);
         out_config = *file_cfg;
-        std::cout << ">>> [Loader] 命中 LLaMA 15M 格式！模型层数: " << out_config.layer << std::endl;
+        std::cout << ">>> [Loader] 命中 LLaMA 15M 格式！"<<'\n'
+                    <<'\n'<<"模型维度: " << out_config.dim
+                    <<'\n'<<"模型隐藏层维度: " << out_config.hidden_dim
+                    <<'\n'<<"模型层数: " << out_config.layer
+                    <<'\n'<<"模型头数: " << out_config.head
+                    <<'\n'<<"KV头数: " << out_config.kv_head
+                    <<'\n'<<"词表大小:"<<out_config.vocab_size
+                    <<'\n'<<"模型支持最大长度:"<<out_config.seq_len
+                    <<std::endl;
 
         // 指针跳过头部，指向第一个权重
         float* w_ptr = data + (sizeof(ModelConfig) / sizeof(float));
