@@ -1,9 +1,15 @@
 #include "tensor/tensor.h"
 #include "base/dispatch.h"
 #include "cmath"
+#include "iostream"
 namespace hxinfer{
-    void silu_tensor(const std::shared_ptr<Tensor>& input,std::shared_ptr<Tensor>& output){
+    void silu_cpu(const std::shared_ptr<Tensor>& input,std::shared_ptr<Tensor>& output){
         DataType type_out=output->tensor_data_type();
+        if(input->deviceType()!=DeviceType::kDeviceCPU||
+           output->deviceType()!=DeviceType::kDeviceCPU){
+            std::cerr<<"[Fatal Error]silu_cpu expects CPU Tensors!"<<std::endl;
+            return;
+        }
         auto silu_logic=[&](const auto*ptr_in,auto *ptr_out){
             using OutType=std::decay_t<decltype(*ptr_out)>;
             size_t total_elements=input->tensor_total_elements();

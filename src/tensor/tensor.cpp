@@ -8,6 +8,7 @@ namespace hxinfer{
                                         size_t{1},std::multiplies<>());
         total_byte_size_=total_elements_* DataTypeSize(data_type_);
         buffer_=std::make_shared<Buffer>(allocator,total_byte_size_);
+        device_type_=allocator->device_type();
     }
 
     void Tensor::tensor_print_data() {

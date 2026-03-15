@@ -2,14 +2,14 @@
 #include "cuda_runtime.h"
 #include "iostream"
 namespace hxinfer{
-    __global__void silu_kernel_cuda(const float* in_data, float* out_data, size_t totalElements){
+    __global__ void silu_kernel_cuda(const float* in_data, float* out_data, size_t totalElements){
         int idx=blockIdx.x*blockDim.x+threadIdx.x;
         if(idx<totalElements){
             float val=in_data[idx];
             out_data[idx]=val/(1+expf(-val));
         }
     }
-    void silu_tensor(const std::shared_ptr<Tensor>& input,std::shared_ptr<Tensor>& output){
+    void silu_cuda(const std::shared_ptr<Tensor>& input,std::shared_ptr<Tensor>& output){
         if(input->deviceType()!=DeviceType::kDeviceCUDA||
             output->deviceType()!=DeviceType::kDeviceCUDA){
             std::cerr<<"[Fatal Error]silu_cuda expects CUDA Tensors!"<<std::endl;

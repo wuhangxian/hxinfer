@@ -1,8 +1,14 @@
 #include "tensor/tensor.h"
 #include "base/dispatch.h"
+#include "iostream"
 namespace hxinfer{
-    void matmul_tensor(const std::shared_ptr<Tensor>& input,const std::shared_ptr<Tensor>& weight,
+    void matmul_cpu(const std::shared_ptr<Tensor>& input,const std::shared_ptr<Tensor>& weight,
                        std::shared_ptr<Tensor>& output){
+        if(input->deviceType()!=DeviceType::kDeviceCPU||
+           output->deviceType()!=DeviceType::kDeviceCPU){
+            std::cerr<<"[Fatal Error]matmul_cpu expects CPU Tensors!"<<std::endl;
+            return;
+        }
         DataType type_out=output->tensor_data_type();
         DataType type_in = input->tensor_data_type();
         if (type_in != weight->tensor_data_type() || type_in != type_out) {
