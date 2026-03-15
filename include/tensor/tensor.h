@@ -26,8 +26,8 @@ namespace hxinfer{
         size_t tensor_total_elements() const{return total_elements_;}
         size_t tensor_total_byte_size() const{return total_byte_size_;}
 
-        DeviceType deviceType() const{return device_type_;}
-        void set_device_type(DeviceType type){device_type_=type;}
+        DeviceType tensor_device_type() const{return device_type_;}
+        void tensor_set_device_type(DeviceType type){device_type_=type;}
         void tensor_reshape(std::vector<int> new_shapes){
             size_t new_total_elements=std::accumulate(new_shapes.begin(),new_shapes.end(),size_t{1},
                                                       std::multiplies<>());
@@ -59,8 +59,8 @@ namespace hxinfer{
 
         void tensor_print_data();
 
-        std::shared_ptr<Tensor> to_cuda(std::shared_ptr<CUDAAllocator> cuda_allocator);
-        std::shared_ptr<Tensor> to_cpu(std::shared_ptr<CPUAllocator> cpu_allocator);
+        std::shared_ptr<Tensor> tensor_to_cuda(std::shared_ptr<CUDAAllocator> cuda_allocator);
+        std::shared_ptr<Tensor> tensor_to_cpu(std::shared_ptr<CPUAllocator> cpu_allocator);
     };
 }
 

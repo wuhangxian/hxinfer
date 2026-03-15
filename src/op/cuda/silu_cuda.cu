@@ -10,13 +10,13 @@ namespace hxinfer{
         }
     }
     void silu_cuda(const std::shared_ptr<Tensor>& input,std::shared_ptr<Tensor>& output){
-        if(input->deviceType()!=DeviceType::kDeviceCUDA||
-            output->deviceType()!=DeviceType::kDeviceCUDA){
+        if(input->tensor_device_type()!=DeviceType::kDeviceCUDA||
+            output->tensor_device_type()!=DeviceType::kDeviceCUDA){
             std::cerr<<"[Fatal Error]silu_cuda expects CUDA Tensors!"<<std::endl;
             return;
         }
-        size_t totalElements=input->tensor_total_elements();
-        if(totalElements==0){
+        size_t total_elements=input->tensor_total_elements();
+        if(total_elements==0){
             return;
         }
         const float *d_in=input->tensor_data_ptr<float>();

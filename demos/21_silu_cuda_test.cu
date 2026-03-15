@@ -21,10 +21,10 @@ int main(){
     silu_tensor(input_cpu,output_cpu);
     output_cpu->tensor_print_data();
     std::cout<<"-----CUDA-----"<<std::endl;
-    std::shared_ptr<Tensor> input_cuda=input_cpu->to_cuda(cuda_allocator);
+    std::shared_ptr<Tensor> input_cuda=input_cpu->tensor_to_cuda(cuda_allocator);
     std::shared_ptr<Tensor> output_cuda=std::make_shared<Tensor>(cuda_allocator,shapes,DataType::kDataTypeFP32);
     silu_tensor(input_cuda,output_cuda);
-    std::shared_ptr<Tensor> output_print=output_cuda->to_cpu(cpu_allocator);
+    std::shared_ptr<Tensor> output_print=output_cuda->tensor_to_cpu(cpu_allocator);
     cudaDeviceSynchronize();
     output_print->tensor_print_data();
 }

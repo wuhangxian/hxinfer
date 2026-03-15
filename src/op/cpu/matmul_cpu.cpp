@@ -4,9 +4,10 @@
 namespace hxinfer{
     void matmul_cpu(const std::shared_ptr<Tensor>& input,const std::shared_ptr<Tensor>& weight,
                        std::shared_ptr<Tensor>& output){
-        if(input->deviceType()!=DeviceType::kDeviceCPU||
-           output->deviceType()!=DeviceType::kDeviceCPU){
-            std::cerr<<"[Fatal Error]matmul_cpu expects CPU Tensors!"<<std::endl;
+        if(input->tensor_device_type()!=DeviceType::kDeviceCPU||
+           weight->tensor_device_type()!=DeviceType::kDeviceCPU||
+           output->tensor_device_type()!=DeviceType::kDeviceCPU){
+            std::cerr<<"[Fatal Error] matmul_cuda expects all tensors to be on CPU"<<std::endl;
             return;
         }
         DataType type_out=output->tensor_data_type();

@@ -71,7 +71,7 @@ namespace hxinfer{
         }
     }
 
-    std::shared_ptr<Tensor> Tensor::to_cuda(std::shared_ptr<CUDAAllocator> cuda_allocator) {
+    std::shared_ptr<Tensor> Tensor::tensor_to_cuda(std::shared_ptr<CUDAAllocator> cuda_allocator) {
         if(this->device_type_==DeviceType::kDeviceCUDA){
             return std::make_shared<Tensor>(*this);
         }
@@ -85,11 +85,11 @@ namespace hxinfer{
             std::cerr<<"Tensor to_cuda failed!"<<cudaGetErrorString(err)<<std::endl;
             return nullptr;
         }
-        cuda_tensor->set_device_type(DeviceType::kDeviceCUDA);
+        cuda_tensor->tensor_set_device_type(DeviceType::kDeviceCUDA);
         return cuda_tensor;
     }
 
-    std::shared_ptr<Tensor> Tensor::to_cpu(std::shared_ptr<CPUAllocator> cpu_allocator) {
+    std::shared_ptr<Tensor> Tensor::tensor_to_cpu(std::shared_ptr<CPUAllocator> cpu_allocator) {
         if(this->device_type_==DeviceType::kDeviceCPU){
             return std::make_shared<Tensor>(*this);
         }
@@ -103,7 +103,7 @@ namespace hxinfer{
             std::cerr<<"Tensor to_cpu failed!"<<cudaGetErrorString(err)<<std::endl;
             return nullptr;
         }
-        cpu_tensor->set_device_type(DeviceType::kDeviceCPU);
+        cpu_tensor->tensor_set_device_type(DeviceType::kDeviceCPU);
         return cpu_tensor;
     }
 }

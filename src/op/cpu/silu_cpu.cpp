@@ -5,8 +5,8 @@
 namespace hxinfer{
     void silu_cpu(const std::shared_ptr<Tensor>& input,std::shared_ptr<Tensor>& output){
         DataType type_out=output->tensor_data_type();
-        if(input->deviceType()!=DeviceType::kDeviceCPU||
-           output->deviceType()!=DeviceType::kDeviceCPU){
+        if(input->tensor_device_type()!=DeviceType::kDeviceCPU||
+           output->tensor_device_type()!=DeviceType::kDeviceCPU){
             std::cerr<<"[Fatal Error]silu_cpu expects CPU Tensors!"<<std::endl;
             return;
         }

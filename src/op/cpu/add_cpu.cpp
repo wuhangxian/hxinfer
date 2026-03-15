@@ -1,19 +1,17 @@
 #include "op/math_ops.h"
 #include "base/dispatch.h"
+#include "iostream"
 namespace hxinfer{
-    void add_tensor(const std::shared_ptr<Tensor>& input_a,const std::shared_ptr<Tensor>& input_b,
+    void add_cpu(const std::shared_ptr<Tensor>& input_a,const std::shared_ptr<Tensor>& input_b,
                     std::shared_ptr<Tensor>& output){
-        size_t input_a_tensor_total_elements=input_a->tensor_total_elements();
-        size_t input_b_tensor_total_elements=input_b->tensor_total_elements();
-        size_t output_tensor_total_elements=output->tensor_total_elements();
-        if(input_a_tensor_total_elements!=input_b_tensor_total_elements){
-            throw std::runtime_error("add_tensor的input_a与input_b数量大小不匹配!\n");
+        if(input_a->tensor_device_type()!=DeviceType::kDeviceCPU||
+           input_b->tensor_device_type()!=DeviceType::kDeviceCPU||
+           output->tensor_device_type()!=DeviceType::kDeviceCPU){
+            std::cerr<<"[Fatal error] add_cuda expects CPU Tensors!";
         }
-        if(input_a_tensor_total_elements!=output_tensor_total_elements){
-            throw std::runtime_error("add_tensor的input_a与output数量大小不匹配!\n");
-        }
-        if(input_b_tensor_total_elements!=output_tensor_total_elements){
-            throw std::runtime_error("add_tensor的input_b与output数量大小不匹配!\n");
+        if(input_a->tensor_total_elements()!=input_b->tensor_total_elements()||
+           input_a->tensor_total_elements()!=output->tensor_total_elements()){
+            throw std::runtime_error("[Fatal error] add_cuda的input_a与input_b与output数量大小不匹配!\n");
         }
         DataType type_a=input_a->tensor_data_type();
         DataType type_b=input_b->tensor_data_type();

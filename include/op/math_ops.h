@@ -6,6 +6,10 @@
 namespace hxinfer{
     void add_tensor(const std::shared_ptr<Tensor>& input_a,const std::shared_ptr<Tensor>& input_b,
                     std::shared_ptr<Tensor>& output);
+    void add_cpu(const std::shared_ptr<Tensor>& input_a,const std::shared_ptr<Tensor>& input_b,
+                    std::shared_ptr<Tensor>& output);
+    void add_cuda(const std::shared_ptr<Tensor>& input_a,const std::shared_ptr<Tensor>& input_b,
+                    std::shared_ptr<Tensor>& output);
     void mul_tensor(const std::shared_ptr<Tensor>& input_a,const std::shared_ptr<Tensor>& input_b,
                     std::shared_ptr<Tensor>& output);
     void softmax_tensor(const std::shared_ptr<Tensor>& input,std::shared_ptr<Tensor>& output);
