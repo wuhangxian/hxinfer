@@ -46,7 +46,7 @@ void run_llama_15m_stories() {
     std::cout << "\n---------------- 📖 童话故事生成开始 ----------------\n" << std::endl;
 
     int current_token_id = 1; // 1 是 LLaMA 的 <BOS> (Begin of Sequence)
-    int max_generate_step = 1000; // 生成 200 个词
+    int max_generate_step = 200; // 生成 200 个词
 
     auto total_start_time = std::chrono::high_resolution_clock::now();
 

@@ -1,0 +1,30 @@
+#include "op/math_ops.h"
+#include "cuda_runtime.h"
+#include "iostream"
+namespace hxinfer{
+    __global__void silu_kernel_cuda(const float* in_data, float* out_data, size_t totalElements){
+        int idx=blockIdx.x*blockDim.x+threadIdx.x;
+        if(idx<totalElements){
+            float val=in_data[idx];
+            out_data[idx]=val/(1+expf(-val));
+        }
+    }
+    void silu_tensor(const std::shared_ptr<Tensor>& input,std::shared_ptr<Tensor>& output){
+        if(input->deviceType()!=DeviceType::kDeviceCUDA||
+            output->deviceType()!=DeviceType::kDeviceCUDA){
+            std::cerr<<"[Fatal Error]silu_cuda expects CUDA Tensors!"<<std::endl;
+            return;
+        }
+        size_t totalElements=input->tensor_total_elements();
+        if(totalElements==0){
+            return;
+        }
+        const float *d_in=input->tensor_data_ptr<float>();
+        float *d_out=output->tensor_data_ptr<float>();
+
+        int threads_per_block=256;
+        int blocks_per_grid=(totalElements+threads_per_block-1)/threads_per_block;
+        silu_kernel_cuda<<<blocks_per_grid,threads_per_block>>>(d_in,d_out,totalElements);
+        cudaDeviceSynchronize();
+    }
+}
