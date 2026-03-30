@@ -1,4 +1,3 @@
-
 #include "cuda_runtime.h"
 #include "op/math_ops.h"
 #include "iostream"
@@ -13,14 +12,18 @@ namespace hxinfer{
     void add_cuda(const std::shared_ptr<Tensor> &input_a,const std::shared_ptr<Tensor> &input_b,
                   std::shared_ptr<Tensor>& output){
         if(input_a->tensor_device_type()!=DeviceType::kDeviceCUDA||
-                    input_b->tensor_device_type()!=DeviceType::kDeviceCUDA||
-                    output->tensor_device_type()!=DeviceType::kDeviceCUDA){
-            std::cerr<<"[Fatal error] add_cuda expects CUDA Tensors!\n";
-            return;
+           input_b->tensor_device_type()!=DeviceType::kDeviceCUDA||
+           output->tensor_device_type()!=DeviceType::kDeviceCUDA){
+            std::cerr<<"[Fatal Error] add_cuda expects CUDA Tensors\n"<<std::endl;
+        }
+        if(input_a->tensor_data_type()!=input_b->tensor_data_type()||
+           input_a->tensor_data_type()!=output->tensor_data_type()){
+            std::cerr<<"[Fatal Error] add_cuda expects same datatype\n"<<std::endl;
         }
         if(input_a->tensor_total_elements()!=input_b->tensor_total_elements()||
-                input_a->tensor_total_elements()!=output->tensor_total_elements()){
-            throw std::runtime_error("[Fatal error] add_cuda的input_a与input_b与output数量大小不匹配!\n");
+           input_a->tensor_total_elements()!=output->tensor_total_elements()){
+            std::cerr<<"[Fatal Error] add_cuda expects same total_elements\n"<<std::endl;
+            return;
         }
         size_t total_elements=input_a->tensor_total_elements();
         if(total_elements==0){

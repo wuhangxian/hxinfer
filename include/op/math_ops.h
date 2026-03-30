@@ -12,6 +12,10 @@ namespace hxinfer{
                     std::shared_ptr<Tensor>& output);
     void mul_tensor(const std::shared_ptr<Tensor>& input_a,const std::shared_ptr<Tensor>& input_b,
                     std::shared_ptr<Tensor>& output);
+    void mul_cpu(const std::shared_ptr<Tensor>& input_a,const std::shared_ptr<Tensor>& input_b,
+                    std::shared_ptr<Tensor>& output);
+    void mul_cuda(const std::shared_ptr<Tensor>& input_a,const std::shared_ptr<Tensor>& input_b,
+                    std::shared_ptr<Tensor>& output);
     void softmax_tensor(const std::shared_ptr<Tensor>& input,std::shared_ptr<Tensor>& output);
     void matmul_tensor(const std::shared_ptr<Tensor>& input,const std::shared_ptr<Tensor>& weight,
                        std::shared_ptr<Tensor>& output);
@@ -21,6 +25,10 @@ namespace hxinfer{
                        std::shared_ptr<Tensor>& output);
     void rope_tensor(std::shared_ptr<Tensor>& q,std::shared_ptr<Tensor>& k,ModelConfig& config,int step,float base=10000);
     void rmsnorm_tensor(const std::shared_ptr<Tensor>& input,const std::shared_ptr<Tensor>& weight,
+                        std::shared_ptr<Tensor>& output,float eps=1e-5);
+    void rmsnorm_cpu(const std::shared_ptr<Tensor>& input,const std::shared_ptr<Tensor>& weight,
+                        std::shared_ptr<Tensor>& output,float eps=1e-5);
+    void rmsnorm_cuda(const std::shared_ptr<Tensor>& input,const std::shared_ptr<Tensor>& weight,
                         std::shared_ptr<Tensor>& output,float eps=1e-5);
     void embedding_tensor(const std::shared_ptr<Tensor>& token_ids,const std::shared_ptr<Tensor>& weight,
                           std::shared_ptr<Tensor>& output);

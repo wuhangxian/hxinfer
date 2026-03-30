@@ -2,7 +2,7 @@
 #include "tensor/tensor.h"
 #include "base/dispatch.h"
 namespace hxinfer{
-    void mul_tensor(const std::shared_ptr<Tensor>& input_a,const std::shared_ptr<Tensor>& input_b,
+    void mul_cpu(const std::shared_ptr<Tensor>& input_a,const std::shared_ptr<Tensor>& input_b,
                     std::shared_ptr<Tensor>& output){
         size_t input_a_tensor_total_elements=input_a->tensor_total_elements();
         size_t input_b_tensor_total_elements=input_b->tensor_total_elements();
