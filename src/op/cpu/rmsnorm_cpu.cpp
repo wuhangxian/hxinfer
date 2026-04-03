@@ -2,7 +2,7 @@
 #include "base/dispatch.h"
 #include "cmath"
 namespace hxinfer{
-    void rmsnorm_tensor(const std::shared_ptr<Tensor>& input,const std::shared_ptr<Tensor>& weight,
+    void rmsnorm_cpu(const std::shared_ptr<Tensor>& input,const std::shared_ptr<Tensor>& weight,
                         std::shared_ptr<Tensor>& output,float eps){
         DataType type_out=output->tensor_data_type();
         auto rmsnorm_logic=[&](const auto* ptr_in,const auto* ptr_weight,auto* ptr_out){

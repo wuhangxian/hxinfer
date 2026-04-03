@@ -64,7 +64,7 @@ namespace hxinfer{
         size_t shared_mem_bytes=threads_per_block*sizeof (float );
 
         rmsnorm_kernel_cuda<<<blocks_per_grid,threads_per_block,shared_mem_bytes>>>(d_out,
-                                    d_int,d_weight,hidden_dim,eps);
+                                    d_in,d_weight,hidden_dim,eps);
         cudaDeviceSynchronize();
 
     }
