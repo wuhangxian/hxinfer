@@ -49,9 +49,12 @@ namespace hxinfer{
 
         const float* d_in=input->tensor_data_ptr<float>();
 
-        // 在 GPU 上分配一个 int 用于存放结果
-        int* d_result;
-        cudaMalloc(&d_result,sizeof(int));
+        // 静态分配一个 int，避免每次 cudaMalloc/Free
+        static int* d_result=[](){
+            int* p;
+            cudaMalloc(&p,sizeof(int));
+            return p;
+        }();
 
         int threads=256;
         size_t shared_bytes=threads*(sizeof(float)+sizeof(int));
@@ -60,7 +63,6 @@ namespace hxinfer{
         // 拷贝结果回 CPU
         int h_result=0;
         cudaMemcpy(&h_result,d_result,sizeof(int),cudaMemcpyDeviceToHost);
-        cudaFree(d_result);
         return h_result;
     }
 }

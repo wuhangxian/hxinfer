@@ -65,7 +65,6 @@ namespace hxinfer{
 
         rmsnorm_kernel_cuda<<<blocks_per_grid,threads_per_block,shared_mem_bytes>>>(d_out,
                                     d_in,d_weight,hidden_dim,eps);
-        cudaDeviceSynchronize();
 
     }
 }

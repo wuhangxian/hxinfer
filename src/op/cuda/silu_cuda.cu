@@ -25,6 +25,5 @@ namespace hxinfer{
         int threads_per_block=256;
         int blocks_per_grid=(total_elements+threads_per_block-1)/threads_per_block;
         silu_kernel_cuda<<<blocks_per_grid,threads_per_block>>>(d_in,d_out,total_elements);
-        cudaDeviceSynchronize();
     }
 }

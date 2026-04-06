@@ -11,11 +11,13 @@ namespace hxinfer{
             std::cerr<<"[Fatal Error] matmul_cuda expects all Tensors to be on CUDA"<<std::endl;
             return;
         }
-        cublasHandle_t handle;
-        if(cublasCreate(&handle)!=CUBLAS_STATUS_SUCCESS){
-            std::cerr<<"CUBLAS initialization failed!"<<std::endl;
-            return;
-        }
+        static cublasHandle_t handle=[](){
+            cublasHandle_t h;
+            if(cublasCreate(&h)!=CUBLAS_STATUS_SUCCESS){
+                std::cerr<<"CUBLAS initialization failed!"<<std::endl;
+            }
+            return h;
+        }();
         const float* d_A=input->tensor_data_ptr<float>();// 假设形状 [M, K]
         const float* d_B=weight->tensor_data_ptr<float>();// 假设形状 [N, K]
         float* d_C=output->tensor_data_ptr<float>();// 输出形状 [M, N]
@@ -41,8 +43,6 @@ namespace hxinfer{
         if(stat!=CUBLAS_STATUS_SUCCESS){
             std::cerr<<"CUBLAS SGEMM failed!"<<std::endl;
         }
-        cublasDestroy(handle);
-        cudaDeviceSynchronize();
     }
 
 }

@@ -120,6 +120,5 @@ namespace hxinfer{
         size_t shared_bytes=(seq_len+threads_attn)*sizeof(float);
         attention_score_kernel<<<head,threads_attn,shared_bytes>>>(d_q,d_k_cache,d_v_cache,
                                                                     d_out,head_dim,dim,pos,scale);
-        cudaDeviceSynchronize();
     }
 }

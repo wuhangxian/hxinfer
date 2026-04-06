@@ -123,8 +123,5 @@ namespace hxinfer{
         // threads_per_block = 256 表示这个 Block 里面有 256 个线程
         // shared_mem_bytes 动态分配共享内存大小
         softmax_kernel_cuda<<<1, threads_per_block, shared_mem_bytes>>>(d_in, d_out, total_elements);
-        
-        // 阻塞 Host 端，等待 GPU 计算完成
-        cudaDeviceSynchronize();
     }
 }

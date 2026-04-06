@@ -48,7 +48,5 @@ namespace hxinfer{
         int k_pairs=config.kv_head*(head_dim/2);
         int k_blocks=(k_pairs+threads-1)/threads;
         rope_kernel_cuda<<<k_blocks,threads>>>(k_data,config.kv_head,head_dim,step,base);
-
-        cudaDeviceSynchronize();
     }
 }

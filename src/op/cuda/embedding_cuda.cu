@@ -33,6 +33,5 @@ namespace hxinfer{
         int threads=256;
         int blocks=(total+threads-1)/threads;
         embedding_kernel_cuda<<<blocks,threads>>>(d_ids,d_weight,d_out,dim,num_tokens);
-        cudaDeviceSynchronize();
     }
 }

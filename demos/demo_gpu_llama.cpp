@@ -19,8 +19,8 @@ void run_llama_15m_gpu() {
     auto cpu_allocator = std::make_shared<CPUAllocator>();
     auto cuda_allocator = std::make_shared<CUDAAllocator>();
 
-    std::string model_path = "../models/stories15M.bin";
-    std::string tokenizer_path = "../models/tokenizer.bin";
+    std::string model_path = "models/stories15M.bin";
+    std::string tokenizer_path = "models/tokenizer.bin";
     ModelConfig config;
 
     // 1. 加载模型到 GPU

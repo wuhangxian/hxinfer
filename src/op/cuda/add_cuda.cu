@@ -35,6 +35,5 @@ namespace hxinfer{
         const float *in_b_ptr=input_b->tensor_data_ptr<float>();
         float *out_ptr=output->tensor_data_ptr<float>();
         add_kernel_cuda<<<blocks_per_Grid,threads_per_Block>>>(in_a_ptr,in_b_ptr,out_ptr,total_elements);
-        cudaDeviceSynchronize();
     }
 }
