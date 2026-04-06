@@ -1,7 +1,7 @@
 #include "tensor/tensor.h"
 #include "base/dispatch.h"
 namespace hxinfer{
-    int  argmax_tensor(const std::shared_ptr<Tensor>& input){
+    int  argmax_cpu(const std::shared_ptr<Tensor>& input){
         DataType type_in=input->tensor_data_type();
         int global_max_index=0;
         auto argmax_logic=[&](const auto* ptr_in){

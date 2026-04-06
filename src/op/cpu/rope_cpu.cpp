@@ -2,7 +2,7 @@
 #include "base/dispatch.h"
 #include "cmath"
 namespace hxinfer{
-    void rope_tensor(std::shared_ptr<Tensor>& q,std::shared_ptr<Tensor>& k,ModelConfig& config,int step,float base){
+    void rope_cpu(std::shared_ptr<Tensor>& q,std::shared_ptr<Tensor>& k,ModelConfig& config,int step,float base){
         // 🚀 1. 极其严密的安检门
         DataType type_q = q->tensor_data_type();
         if (type_q != k->tensor_data_type()) {

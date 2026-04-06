@@ -3,7 +3,7 @@
 #include "base/dispatch.h"
 #include "cmath"
 namespace hxinfer{
-    void softmax_tensor(const std::shared_ptr<Tensor>& input,std::shared_ptr<Tensor>& output){
+    void softmax_cpu(const std::shared_ptr<Tensor>& input,std::shared_ptr<Tensor>& output){
         size_t input_tensor_total_elements=input->tensor_total_elements();
         size_t output_tensor_total_elements=output->tensor_total_elements();
         if(input_tensor_total_elements!=output_tensor_total_elements){

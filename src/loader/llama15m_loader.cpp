@@ -7,6 +7,7 @@
 #include <sys/stat.h>
 #include "iostream"
 #include "memory"
+#include "cuda_runtime.h"
 
 namespace hxinfer{
     std::shared_ptr<LlamaModel> Llama15MLoader::load_model(const std::string &model_path,
@@ -120,7 +121,116 @@ namespace hxinfer{
         return std::make_shared<LlamaModel>(
                 allocator, embedding_layer, blocks, final_norm_layer, lm_head_layer, out_config
         );
+    }
 
+    std::shared_ptr<LlamaModel> Llama15MLoader::load_model_cuda(const std::string &model_path,
+                                                                 ModelConfig &out_config,
+                                                                 const std::shared_ptr<Allocator> cpu_allocator,
+                                                                 const std::shared_ptr<CUDAAllocator> cuda_allocator) {
+        // ==========================================
+        // 1. mmap 零拷贝映射 (与 CPU 版完全一致)
+        // ==========================================
+        int fd=open(model_path.c_str(),O_RDONLY);
+        if (fd < 0) throw std::runtime_error("找不到模型文件: " + model_path);
+        struct stat sb;
+        fstat(fd, &sb);
+        float* data = static_cast<float*>(mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, 0));
+        if (data == MAP_FAILED) throw std::runtime_error("mmap 失败");
 
+        ModelConfig* file_cfg = reinterpret_cast<ModelConfig*>(data);
+        out_config = *file_cfg;
+        std::cout << ">>> [GPU Loader] 命中 LLaMA 15M 格式！"<<'\n'
+                    <<'\n'<<"模型维度: " << out_config.dim
+                    <<'\n'<<"模型隐藏层维度: " << out_config.hidden_dim
+                    <<'\n'<<"模型层数: " << out_config.layer
+                    <<'\n'<<"模型头数: " << out_config.head
+                    <<'\n'<<"KV头数: " << out_config.kv_head
+                    <<'\n'<<"词表大小:"<<out_config.vocab_size
+                    <<'\n'<<"模型支持最大长度:"<<out_config.seq_len
+                    <<std::endl;
+
+        float* w_ptr = data + (sizeof(ModelConfig) / sizeof(float));
+        int head_dim = out_config.dim / out_config.head;
+        int kv_dim = (out_config.kv_head) * head_dim;
+
+        // ==========================================
+        // 2. 先加载到 CPU，再搬运到 CUDA
+        // ==========================================
+        // 辅助 lambda：mmap → CPU Tensor → CUDA Tensor
+        auto load_and_transfer = [&](std::shared_ptr<Tensor>& gpu_tensor, const std::vector<int>& shape) {
+            auto cpu_tensor = std::make_shared<Tensor>(cpu_allocator, shape, DataType::kDataTypeFP32);
+            size_t elements = 1;
+            for(int s : shape) elements *= s;
+            std::memcpy(cpu_tensor->raw_data_ptr(), w_ptr, elements * sizeof(float));
+            w_ptr += elements;
+            gpu_tensor = cpu_tensor->tensor_to_cuda(cuda_allocator);
+        };
+
+        // 2.1 Embedding 权重
+        std::shared_ptr<Tensor> embed_w;
+        load_and_transfer(embed_w, {out_config.vocab_size, out_config.dim});
+
+        // 2.2 各层权重
+        std::vector<std::shared_ptr<Tensor>> attn_norm_w(out_config.layer);
+        std::vector<std::shared_ptr<Tensor>> wq_w(out_config.layer), wk_w(out_config.layer), wv_w(out_config.layer), wo_w(out_config.layer);
+        std::vector<std::shared_ptr<Tensor>> ffn_norm_w(out_config.layer);
+        std::vector<std::shared_ptr<Tensor>> w1_w(out_config.layer), w2_w(out_config.layer), w3_w(out_config.layer);
+
+        for (int i = 0; i < out_config.layer; i++) load_and_transfer(attn_norm_w[i], {out_config.dim});
+        for (int i = 0; i < out_config.layer; i++) load_and_transfer(wq_w[i], {out_config.dim, out_config.dim});
+        for (int i = 0; i < out_config.layer; i++) load_and_transfer(wk_w[i], {kv_dim, out_config.dim});
+        for (int i = 0; i < out_config.layer; i++) load_and_transfer(wv_w[i], {kv_dim, out_config.dim});
+        for (int i = 0; i < out_config.layer; i++) load_and_transfer(wo_w[i], {out_config.dim, out_config.dim});
+        for (int i = 0; i < out_config.layer; i++) load_and_transfer(ffn_norm_w[i], {out_config.dim});
+        for (int i = 0; i < out_config.layer; i++) load_and_transfer(w1_w[i], {out_config.hidden_dim, out_config.dim});
+        for (int i = 0; i < out_config.layer; i++) load_and_transfer(w2_w[i], {out_config.dim, out_config.hidden_dim});
+        for (int i = 0; i < out_config.layer; i++) load_and_transfer(w3_w[i], {out_config.hidden_dim, out_config.dim});
+
+        // 2.3 Final Norm
+        std::shared_ptr<Tensor> final_norm_w;
+        load_and_transfer(final_norm_w, {out_config.dim});
+
+        // 2.4 跳过 RoPE 频率
+        w_ptr += out_config.seq_len * head_dim;
+
+        // 2.5 LM_Head 权重
+        std::shared_ptr<Tensor> lm_head_w;
+        size_t current_offset = (char*)w_ptr - (char*)data;
+        if (current_offset >= (size_t)sb.st_size) {
+            std::cout << ">>> [GPU Loader] 命中权重共享机制！复用 Embedding 权重。" << std::endl;
+            // 从已经在 GPU 上的 embed_w 拷贝 (device-to-device)
+            lm_head_w = std::make_shared<Tensor>(cuda_allocator,
+                        std::vector<int>{out_config.vocab_size, out_config.dim}, DataType::kDataTypeFP32);
+            cudaMemcpy(lm_head_w->raw_data_ptr(), embed_w->raw_data_ptr(),
+                       out_config.vocab_size * out_config.dim * sizeof(float), cudaMemcpyDeviceToDevice);
+        } else {
+            load_and_transfer(lm_head_w, {out_config.vocab_size, out_config.dim});
+        }
+
+        munmap(data, sb.st_size);
+        close(fd);
+
+        // ==========================================
+        // 3. 用 CUDA Allocator 组装模型 (中间 buffer 全部在 GPU 上)
+        // ==========================================
+        auto embedding_layer = std::make_shared<EmbeddingLayer>(embed_w);
+        auto final_norm_layer = std::make_shared<RMSNormLayer>(final_norm_w);
+        auto lm_head_layer = std::make_shared<LinearLayer>(lm_head_w);
+
+        std::vector<std::shared_ptr<TransformerLayer>> blocks;
+        for (int i = 0; i < out_config.layer; i++) {
+            blocks.push_back(std::make_shared<TransformerLayer>(
+                    cuda_allocator, out_config,
+                    attn_norm_w[i], wq_w[i], wk_w[i], wv_w[i], wo_w[i],
+                    ffn_norm_w[i], w1_w[i], w3_w[i], w2_w[i]
+            ));
+        }
+
+        std::cout << ">>> [GPU Loader] LlamaModel GPU 版本组装完毕！" << std::endl;
+
+        std::shared_ptr<Allocator> alloc_base = cuda_allocator;
+        return std::make_shared<LlamaModel>(
+                alloc_base, embedding_layer, blocks, final_norm_layer, lm_head_layer, out_config
+        );
     }
 }

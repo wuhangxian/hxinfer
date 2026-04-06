@@ -6,51 +6,59 @@ namespace hxinfer{
         int dim=config_.dim;
         int head=config_.head;
         int head_dim=dim/head;
-        float *ptr_k_cache=k_cache_->tensor_data_ptr<float>();
-        float *ptr_v_cache=v_cache_->tensor_data_ptr<float>();
-        float *ptr_curr_q=curr_q_->tensor_data_ptr<float>();
-        float *ptr_curr_k=curr_k_->tensor_data_ptr<float>();
-        float *ptr_curr_v=curr_v_->tensor_data_ptr<float>();
-        float *ptr_curr_qktv=after_qktv_->tensor_data_ptr<float>();
+
         q_proj_->forward(input,curr_q_);
         k_proj_->forward(input,curr_k_);
         v_proj_->forward(input,curr_v_);
         rope_tensor(curr_q_,curr_k_,config_,pos);
-        memcpy(ptr_k_cache+pos*dim,ptr_curr_k,dim*sizeof (float ));
-        memcpy(ptr_v_cache+pos*dim,ptr_curr_v,dim*sizeof (float ));
-        std::vector<float> scores(pos+1);
-        float scale=1.0/std::sqrt(head_dim);
-        for(int i=0;i<head;i++){
-            float *curr_q=ptr_curr_q+i*head_dim;
-            for(int j=0;j<=pos;j++){
-                float *curr_k=ptr_k_cache+j*dim+i*head_dim;
+
+        if(input->tensor_device_type()==DeviceType::kDeviceCUDA){
+            // ========== CUDA Path ==========
+            attention_score_cuda(curr_q_,curr_k_,curr_v_,k_cache_,v_cache_,after_qktv_,config_,pos);
+        }else{
+            // ========== CPU Path ==========
+            float *ptr_k_cache=k_cache_->tensor_data_ptr<float>();
+            float *ptr_v_cache=v_cache_->tensor_data_ptr<float>();
+            float *ptr_curr_q=curr_q_->tensor_data_ptr<float>();
+            float *ptr_curr_k=curr_k_->tensor_data_ptr<float>();
+            float *ptr_curr_v=curr_v_->tensor_data_ptr<float>();
+            float *ptr_curr_qktv=after_qktv_->tensor_data_ptr<float>();
+            memcpy(ptr_k_cache+pos*dim,ptr_curr_k,dim*sizeof(float));
+            memcpy(ptr_v_cache+pos*dim,ptr_curr_v,dim*sizeof(float));
+            std::vector<float> scores(pos+1);
+            float scale=1.0/std::sqrt(head_dim);
+            for(int i=0;i<head;i++){
+                float *curr_q=ptr_curr_q+i*head_dim;
+                for(int j=0;j<=pos;j++){
+                    float *curr_k=ptr_k_cache+j*dim+i*head_dim;
+                    float sum=0;
+                    for(int sc=0;sc<head_dim;sc++){
+                        sum=sum+curr_q[sc]*curr_k[sc];
+                    }
+                    scores[j]=sum*scale;
+                }
+                float max_score=scores[0];
+                for(int d=1;d<=pos;d++){
+                    if(scores[d]>max_score){
+                        max_score=scores[d];
+                    }
+                }
                 float sum=0;
-                for(int sc=0;sc<head_dim;sc++){
-                    sum=sum+curr_q[sc]*curr_k[sc];
+                for(int d=0;d<=pos;d++){
+                    scores[d]=std::exp(scores[d]-max_score);
+                    sum=sum+scores[d];
                 }
-                scores[j]=sum*scale;
-            }
-            float max_score=scores[0];
-            for(int d=1;d<=pos;d++){
-                if(scores[d]>max_score){
-                    max_score=scores[d];
+                for(int d=0;d<=pos;d++){
+                    scores[d]=scores[d]/sum;
                 }
-            }
-            float sum=0;
-            for(int d=0;d<=pos;d++){
-                scores[d]=std::exp(scores[d]-max_score);
-                sum=sum+scores[d];
-            }
-            for(int d=0;d<=pos;d++){
-                scores[d]=scores[d]/sum;
-            }
-            float *curr_qkvt=ptr_curr_qktv+i*head_dim;
-            for(int j=0;j<head_dim;j++){
-                float sum=0;
-                for(int k=0;k<=pos;k++){
-                    sum=sum+scores[k]*ptr_v_cache[k*dim+i*head_dim+j];
+                float *curr_qkvt=ptr_curr_qktv+i*head_dim;
+                for(int j=0;j<head_dim;j++){
+                    float sum=0;
+                    for(int k=0;k<=pos;k++){
+                        sum=sum+scores[k]*ptr_v_cache[k*dim+i*head_dim+j];
+                    }
+                    curr_qkvt[j]=sum;
                 }
-                curr_qkvt[j]=sum;
             }
         }
         o_proj_->forward(after_qktv_,output);

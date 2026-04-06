@@ -9,6 +9,11 @@ namespace hxinfer{
             ModelConfig& out_config,
             const std::shared_ptr<Allocator> allocator);
 
+        static std::shared_ptr<LlamaModel> load_model_cuda(
+            const std::string& model_path,
+            ModelConfig& out_config,
+            const std::shared_ptr<Allocator> cpu_allocator,
+            const std::shared_ptr<CUDAAllocator> cuda_allocator);
     };
 }
 

@@ -1,11 +1,11 @@
 #include "tensor/tensor.h"
 #include "base/dispatch.h"
 namespace hxinfer{
-    void embedding_tensor(const std::shared_ptr<Tensor>& token_ids,const std::shared_ptr<Tensor>& weight,
-                          std::shared_ptr<Tensor>& output){
+    void embedding_cpu(const std::shared_ptr<Tensor>& token_ids,const std::shared_ptr<Tensor>& weight,
+                       std::shared_ptr<Tensor>& output){
         DataType type_out=output->tensor_data_type();
         if (weight->tensor_data_type() != type_out) {
-            throw std::runtime_error("embedding_tensor: weight 和 output 的数据类型必须一致!");
+            throw std::runtime_error("embedding_cpu: weight 和 output 的数据类型必须一致!");
         }
         auto embedding_logic=[&](const auto* ptr_ids,const auto* ptr_weight,auto* ptr_out){
             using weight_type=std::decay_t<decltype(*ptr_weight)>;

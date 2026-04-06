@@ -13,13 +13,13 @@ namespace hxinfer{
 
         float local_sum=0;
         for(int i=tid;i<hidden_dim;i=i+blockDim.x){
-            local_sum=local_sum+current_in[i]+current_in[i];
+            local_sum=local_sum+current_in[i]*current_in[i];
         }
         extern __shared__ float s_sum[];
         s_sum[tid]=local_sum;
         __syncthreads();
 
-        for(int stride=blockDim.x/2;stride>0;stride>>1){
+        for(int stride=blockDim.x/2;stride>0;stride>>=1){
             if(tid<stride){
                 s_sum[tid]=s_sum[tid]+s_sum[tid+stride];
             }
@@ -37,7 +37,7 @@ namespace hxinfer{
     }
 
     void rmsnorm_cuda(const std::shared_ptr<Tensor>& input,const std::shared_ptr<Tensor>& weight,
-                      std::shared_ptr<Tensor>& output,float eps=1e-5){
+                      std::shared_ptr<Tensor>& output,float eps){
         // 【规矩 1】：严格的设备类型校验
         if(input->tensor_device_type() != DeviceType::kDeviceCUDA ||
            weight->tensor_device_type() != DeviceType::kDeviceCUDA ||
