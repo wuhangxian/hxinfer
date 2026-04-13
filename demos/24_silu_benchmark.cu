@@ -131,7 +131,7 @@ int main(){
     float ai_avg_us = (ai_ms * 1000.0f) / num_runs;
     std::cout << "[3] AI 版 CUDA SiLU 平均耗时: " << ai_avg_us << " us\n";
     float bandwith_VRAM_SM_ai=(total_elements*4*2)/(ai_avg_us/1e6)/(1024*1024*1024);
-    std::cout << "[3] 手写 CUDA SiLU VRAM到SM之间的带宽: " << bandwith_VRAM_SM_ai << " GB/S\n";
+    std::cout << "[3] AI CUDA SiLU VRAM到SM之间的带宽: " << bandwith_VRAM_SM_ai << " GB/S\n";
     c_out_ai=c_out_cuda_ai->tensor_to_cpu(allocator_cpu);
     std::cout<<"cuda上的进行silu运算得到tensor_output,ai写的"<<"\n";
     //c_out_ai->tensor_print_data();

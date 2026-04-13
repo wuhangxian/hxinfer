@@ -2,10 +2,11 @@
 #include "cuda_runtime.h"
 #include "iostream"
 namespace hxinfer{
+    //还可以优化的方向--使用float4,一个线程运输4个float捆绑到一起,128bits
     __global__ void silu_kernel_cuda(const float* in_data, float* out_data, size_t totalElements){
-        int idx=blockIdx.x*blockDim.x+threadIdx.x;
+        size_t idx=blockIdx.x*blockDim.x+threadIdx.x;
         if(idx<totalElements){
-            float val=in_data[idx];
+            float val=in_data[idx];//访问寄存器,减少时间
             out_data[idx]=val/(1+expf(-val));
         }
     }

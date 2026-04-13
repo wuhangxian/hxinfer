@@ -13,6 +13,7 @@
 #include "loader/llama15m_loader.h"
 #include "loader/llama_tokenizer.h"
 
+//./build/demo_gpu_llama both
 using namespace hxinfer;
 
 void run_llama_15m_gpu() {
