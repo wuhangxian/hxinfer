@@ -41,6 +41,13 @@ namespace hxinfer{
 
         }
 
+        // ===================== Prefix Cache 专用接口 =====================
+        // 为什么要暴露 AttentionLayer？
+        // PrefixCacheManager 需要穿透到每一层的 AttentionLayer，
+        // 才能拿到该层的 k_cache_ 和 v_cache_ 进行快照/恢复。
+        // 调用链: LlamaModel::get_blocks() → TransformerLayer::get_attention() → AttentionLayer::get_k/v_cache()
+        std::shared_ptr<AttentionLayer>& get_attention() { return attentionLayer_; }
+
         // 🚀 1. 这是你真正用来干活的流水线！(带 pos)
         void forward(std::shared_ptr<Tensor>& input, std::shared_ptr<Tensor>& output, int pos);
 

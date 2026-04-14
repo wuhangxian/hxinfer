@@ -37,7 +37,8 @@ namespace hxinfer{
             curr_q_=std::make_shared<Tensor>(allocator,curr_shapes,dtype);
             curr_k_=std::make_shared<Tensor>(allocator,curr_shapes,dtype);
             curr_v_=std::make_shared<Tensor>(allocator,curr_shapes,dtype);
-
+            // 显存池创建,构造时一次性分配
+            // 这里 max_seq_len = config_.seq_len = 256，dim = 288
             std::vector<int> cache_shapes={max_seq_len,dim};
             k_cache_=std::make_shared<Tensor>(allocator,cache_shapes,dtype);
             v_cache_=std::make_shared<Tensor>(allocator,cache_shapes,dtype);
@@ -54,7 +55,17 @@ namespace hxinfer{
         }
 
         void forward(std::shared_ptr<Tensor>& input,std::shared_ptr<Tensor>& output,int pos);
-        // 🚀 补上这份“基础合同”，红线瞬间灰飞烟灭！
+
+        // ===================== Prefix Cache 专用接口 =====================
+        // 为什么要暴露 KV Cache？
+        // PrefixCacheManager 需要：
+        //   1. store(): 从 k_cache_ / v_cache_ 中 memcpy 出前 N 行做快照
+        //   2. restore(): 把快照 memcpy 回 k_cache_ / v_cache_ 的前 N 行
+        // 返回引用是为了让外部能直接拿到底层指针做 memcpy，不产生拷贝
+        std::shared_ptr<Tensor>& get_k_cache() { return k_cache_; }
+        std::shared_ptr<Tensor>& get_v_cache() { return v_cache_; }
+
+        // 🚀 补上这份"基础合同"，红线瞬间灰飞烟灭！
         void forward(std::shared_ptr<Tensor>& input, std::shared_ptr<Tensor>& output) override {
             // 因为我们强制要求带 pos，如果有人调错版本，直接报错
             throw std::runtime_error("AttentionLayer requires 'pos' parameter!\n");

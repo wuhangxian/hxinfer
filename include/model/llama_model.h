@@ -33,6 +33,14 @@ namespace hxinfer{
             pang_=std::make_shared<Tensor>(allocator,hidden_shape,dtype);
         }
         void forward(std::shared_ptr<Tensor>& input,std::shared_ptr<Tensor>& output,int pos);
+
+        // ===================== Prefix Cache 专用接口 =====================
+        // 为什么要暴露 blocks_？
+        // PrefixCacheManager 需要遍历模型的每一层 TransformerLayer，
+        // 然后通过 get_attention() → get_k/v_cache() 拿到每层的 KV Cache。
+        // 调用链: model.get_blocks()[i] → blocks_[i]->get_attention() → get_k/v_cache()
+        std::vector<std::shared_ptr<TransformerLayer>>& get_blocks() { return blocks_; }
+
         void forward(std::shared_ptr<Tensor>& input,std::shared_ptr<Tensor>& output) override{
             throw std::runtime_error("LlamaModel 需要pos参数!");
         }

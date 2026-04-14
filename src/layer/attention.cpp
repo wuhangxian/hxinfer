@@ -23,6 +23,7 @@ namespace hxinfer{
             float *ptr_curr_k=curr_k_->tensor_data_ptr<float>();
             float *ptr_curr_v=curr_v_->tensor_data_ptr<float>();
             float *ptr_curr_qktv=after_qktv_->tensor_data_ptr<float>();
+            // 将当前的k和v复制到缓存中
             memcpy(ptr_k_cache+pos*dim,ptr_curr_k,dim*sizeof(float));
             memcpy(ptr_v_cache+pos*dim,ptr_curr_v,dim*sizeof(float));
             std::vector<float> scores(pos+1);
