@@ -2,10 +2,10 @@
 cmake_minimum_required(VERSION 3.16)
 
 # 【关键点 1】强行指定 nvcc 路径（请确保这真的是你 which nvcc 查出来的路径！）
-set(CMAKE_CUDA_COMPILER "/usr/local/cuda-12.1/bin/nvcc")
+set(CMAKE_CUDA_COMPILER "/workspace/whx/cuda-12.1/bin/nvcc")
 
 # 【关键点 2】把架构声明提前到 project 之前，防止某些 CMake 版本发神经
-set(CMAKE_CUDA_ARCHITECTURES "89")
+set(CMAKE_CUDA_ARCHITECTURES "86")
 
 # 2. 定义工程名称，正式开启异构双语支持
 project(hxinfer LANGUAGES CXX CUDA)
@@ -59,6 +59,7 @@ target_link_libraries(hxinfer_core
         m
         CUDA::cudart
         CUDA::cublas
+        sentencepiece
 )
 
 # =====================================================================

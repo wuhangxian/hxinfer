@@ -47,6 +47,23 @@ namespace hxinfer{
     int  argmax_cpu(const std::shared_ptr<Tensor>& input);
     int  argmax_cuda(const std::shared_ptr<Tensor>& input);
 
+    // Temperature + Top-p 采样
+    int  sample_tensor(const std::shared_ptr<Tensor>& logits, float temperature, float top_p);
+
+    // 融合 QKV / Gate+Up 投影
+    void matmul_qkv_cuda(const std::shared_ptr<Tensor>& input,
+                          const std::shared_ptr<Tensor>& wq,
+                          const std::shared_ptr<Tensor>& wk,
+                          const std::shared_ptr<Tensor>& wv,
+                          std::shared_ptr<Tensor>& q_out,
+                          std::shared_ptr<Tensor>& k_out,
+                          std::shared_ptr<Tensor>& v_out);
+    void matmul_gate_up_cuda(const std::shared_ptr<Tensor>& input,
+                              const std::shared_ptr<Tensor>& w_gate,
+                              const std::shared_ptr<Tensor>& w_up,
+                              std::shared_ptr<Tensor>& gate_out,
+                              std::shared_ptr<Tensor>& up_out);
+
     void attention_score_cuda(const std::shared_ptr<Tensor>& q,
                               const std::shared_ptr<Tensor>& curr_k,
                               const std::shared_ptr<Tensor>& curr_v,
