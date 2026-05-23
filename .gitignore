@@ -40,3 +40,12 @@ cmake_install.cmake
 /03_buffer
 # 如果你经常在根目录编译，可以用通配符（屏蔽开头是数字的文件）
 /[0-9]*
+
+# 7. 屏蔽 profiling 产物 (Nsight)
+*.nsys-rep
+*.sqlite
+
+# 8. 屏蔽旧版编译产物
+/llama_infer_cpu_v1
+/llama_infer_cpu_v2
+/llama_infer_cpu_v2_fast
