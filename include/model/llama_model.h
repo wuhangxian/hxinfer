@@ -11,7 +11,6 @@ namespace hxinfer{
         std::vector<std::shared_ptr<TransformerLayer>> blocks_;
         std::shared_ptr<RMSNormLayer> final_norm_;
         std::shared_ptr<LinearLayer> lm_head_;
-
         std::shared_ptr<Tensor> ping_;
         std::shared_ptr<Tensor> pang_;
 
