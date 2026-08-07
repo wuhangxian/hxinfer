@@ -184,7 +184,7 @@ public:
     }
 };
 int main(){
-    std::shared_ptr<Allocator> allocator=std::make_shared<CPUAllocatr>();
+    std::shared_ptr<Allocator> allocator=std::make_shared<CPUAllocator>();
     std::shared_ptr<Tensor> input=std::make_shared<Tensor>(std::vector<int>{2,3},allocator);
     std::shared_ptr<Tensor> output=std::make_shared<Tensor>(std::vector<int>{2,2},allocator);
     float *in_ptr=(float *)input->tensor_data_ptr();

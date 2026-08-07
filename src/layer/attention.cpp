@@ -1,5 +1,6 @@
 #include "layer/attention.h"
 #include "op/math_ops.h"
+#include "cuda_runtime.h"
 #include "cmath"
 namespace hxinfer{
     void AttentionLayer::forward(std::shared_ptr<Tensor>& input, std::shared_ptr<Tensor>& output, int pos) {
@@ -7,23 +8,24 @@ namespace hxinfer{
         int head=config_.head;
         int head_dim=dim/head;
 
-        q_proj_->forward(input,curr_q_);
-        k_proj_->forward(input,curr_k_);
-        v_proj_->forward(input,curr_v_);
-        rope_tensor(curr_q_,curr_k_,config_,pos);
-
         if(input->tensor_device_type()==DeviceType::kDeviceCUDA){
-            // ========== CUDA Path ==========
-            attention_score_cuda(curr_q_,curr_k_,curr_v_,k_cache_,v_cache_,after_qktv_,config_,pos);
-        }else{
+            // ========== CUDA 融合路径 ==========
+            matmul_qkv_cuda(input, wq_, wk_, wv_, curr_q_, curr_k_, curr_v_);
+            rope_tensor(curr_q_, curr_k_, config_, pos);
+            attention_score_cuda(curr_q_, curr_k_, curr_v_, k_cache_, v_cache_, after_qktv_, config_, pos);
+        } else {
             // ========== CPU Path ==========
+            q_proj_->forward(input,curr_q_);
+            k_proj_->forward(input,curr_k_);
+            v_proj_->forward(input,curr_v_);
+            rope_tensor(curr_q_,curr_k_,config_,pos);
+
             float *ptr_k_cache=k_cache_->tensor_data_ptr<float>();
             float *ptr_v_cache=v_cache_->tensor_data_ptr<float>();
             float *ptr_curr_q=curr_q_->tensor_data_ptr<float>();
             float *ptr_curr_k=curr_k_->tensor_data_ptr<float>();
             float *ptr_curr_v=curr_v_->tensor_data_ptr<float>();
             float *ptr_curr_qktv=after_qktv_->tensor_data_ptr<float>();
-            // 将当前的k和v复制到缓存中
             memcpy(ptr_k_cache+pos*dim,ptr_curr_k,dim*sizeof(float));
             memcpy(ptr_v_cache+pos*dim,ptr_curr_v,dim*sizeof(float));
             std::vector<float> scores(pos+1);

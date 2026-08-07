@@ -11,10 +11,12 @@ namespace hxinfer{
         std::vector<std::shared_ptr<TransformerLayer>> blocks_;
         std::shared_ptr<RMSNormLayer> final_norm_;
         std::shared_ptr<LinearLayer> lm_head_;
+
         std::shared_ptr<Tensor> ping_;
         std::shared_ptr<Tensor> pang_;
 
         ModelConfig& config_;
+        DataType activation_dtype_;  // 激活值类型：7B=FP16, 15M=FP32
     public:
         LlamaModel(std::shared_ptr<Allocator> allocator,
                    std::shared_ptr<EmbeddingLayer>& embeddingLayer,
@@ -26,18 +28,20 @@ namespace hxinfer{
                    blocks_(block),final_norm_(final_norm),lm_head_(lm_head),
                    config_(config){
             int dim=config_.dim;
+            // 激活值类型：根据第一个 block 的权重类型决定
+            activation_dtype_ = (!blocks_.empty() &&
+                blocks_[0]->get_attention()->get_k_cache()->tensor_data_type() == DataType::kDataTypeFP16)
+                ? DataType::kDataTypeFP16 : DataType::kDataTypeFP32;
+
             std::vector<int> hidden_shape={1,dim};
-            DataType dtype=DataType::kDataTypeFP32;
-            ping_=std::make_shared<Tensor>(allocator,hidden_shape,dtype);
-            pang_=std::make_shared<Tensor>(allocator,hidden_shape,dtype);
+            ping_=std::make_shared<Tensor>(allocator,hidden_shape,activation_dtype_);
+            pang_=std::make_shared<Tensor>(allocator,hidden_shape,activation_dtype_);
+            DeviceType dev=allocator->device_type();
+            ping_->tensor_set_device_type(dev);
+            pang_->tensor_set_device_type(dev);
         }
         void forward(std::shared_ptr<Tensor>& input,std::shared_ptr<Tensor>& output,int pos);
 
-        // ===================== Prefix Cache 专用接口 =====================
-        // 为什么要暴露 blocks_？
-        // PrefixCacheManager 需要遍历模型的每一层 TransformerLayer，
-        // 然后通过 get_attention() → get_k/v_cache() 拿到每层的 KV Cache。
-        // 调用链: model.get_blocks()[i] → blocks_[i]->get_attention() → get_k/v_cache()
         std::vector<std::shared_ptr<TransformerLayer>>& get_blocks() { return blocks_; }
 
         void forward(std::shared_ptr<Tensor>& input,std::shared_ptr<Tensor>& output) override{

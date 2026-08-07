@@ -41,11 +41,27 @@ cmake_install.cmake
 # 如果你经常在根目录编译，可以用通配符（屏蔽开头是数字的文件）
 /[0-9]*
 
-# 7. 屏蔽 profiling 产物 (Nsight)
+# 7. 屏蔽性能剖析产物 (nsys / ncu / sqlite)
 *.nsys-rep
+*.ncu-rep
 *.sqlite
+*.qdrep
+profiling_reports/
 
-# 8. 屏蔽旧版编译产物
+# 8. 屏蔽模型权重等大文件 (不应进 git，应由脚本下载/转换生成)
+*.bin
+*.safetensors
+*.pt
+*.pth
+*.gguf
+weights/
+# 例外：15M 玩具模型是随仓库自带的测试资产，保留
+!models/stories15M.bin
+!models/tokenizer.bin
+
+# 9. 屏蔽根目录手动编译出的 llama_infer 等可执行文件
 /llama_infer_cpu_v1
 /llama_infer_cpu_v2
 /llama_infer_cpu_v2_fast
+/demo_*
+!demos/

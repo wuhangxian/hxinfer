@@ -11,4 +11,3 @@ namespace hxinfer{
         lm_head_->forward(ping_,output);
     }
 }
-
