@@ -3,6 +3,7 @@
 #include <vector>
 #include <chrono>
 #include <string>
+#include <cstdlib>
 #include "cuda_runtime.h"
 #include "base/allocator.h"
 #include "base/config.h"
@@ -15,7 +16,10 @@
 using namespace hxinfer;
 
 int main(int argc, char** argv){
-    const std::string DATA_DIR   = "/workspace/whx/hxinfer-data";
+    // 数据目录: 优先环境变量 HXINFER_DATA_DIR，否则用默认值。
+    //   export HXINFER_DATA_DIR=/your/path   或   HXINFER_DATA_DIR=/path ./demo_gpu_llama7b
+    const char* env_data = std::getenv("HXINFER_DATA_DIR");
+    const std::string DATA_DIR   = env_data ? std::string(env_data) : "/workspace/whx/hxinfer-data";
     const std::string TOKEN_PATH = DATA_DIR + "/Yarn-Llama-2-7b-128k/tokenizer.model";
     const std::string PROMPT     = "Once upon a time";
     const int MAX_NEW_TOKENS     = 200;

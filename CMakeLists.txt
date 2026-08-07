@@ -1,11 +1,21 @@
 # 1. 指定最低 CMake 版本要求
 cmake_minimum_required(VERSION 3.16)
 
-# 【关键点 1】强行指定 nvcc 路径（请确保这真的是你 which nvcc 查出来的路径！）
-set(CMAKE_CUDA_COMPILER "/workspace/whx/cuda-12.1/bin/nvcc")
+# 【关键点 1】nvcc 编译器路径
+# 默认让 CMake 自动探测 (依赖 PATH 中的 nvcc)。
+# 如需指定，用命令行覆盖:  cmake -DCMAKE_CUDA_COMPILER=/usr/local/cuda/bin/nvcc ..
+# 或设置环境变量 CUDACXX 指向 nvcc。
+if(DEFINED ENV{CUDACXX} AND NOT DEFINED CMAKE_CUDA_COMPILER)
+    set(CMAKE_CUDA_COMPILER "$ENV{CUDACXX}")
+endif()
 
-# 【关键点 2】把架构声明提前到 project 之前，防止某些 CMake 版本发神经
-set(CMAKE_CUDA_ARCHITECTURES "86")
+# 【关键点 2】目标 GPU 架构，必须在 project() 之前声明。
+# 默认 86 (Ampere, 如 RTX 3090/A100)。其他卡用命令行覆盖:
+#   Hopper (H20/H100): cmake -DCMAKE_CUDA_ARCHITECTURES=90 ..
+#   Ada    (RTX 4090): cmake -DCMAKE_CUDA_ARCHITECTURES=89 ..
+if(NOT DEFINED CMAKE_CUDA_ARCHITECTURES)
+    set(CMAKE_CUDA_ARCHITECTURES "86")
+endif()
 
 # 2. 定义工程名称，正式开启异构双语支持
 project(hxinfer LANGUAGES CXX CUDA)
