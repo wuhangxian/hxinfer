@@ -164,7 +164,7 @@ Input → RMSNorm → Attention(+Residual) → RMSNorm → SwiGLU(+Residual) →
 
 ## 性能
 
-RTX 3090 上 LLaMA-2-7B decode 速度：
+### RTX 3090 上 LLaMA-2-7B decode 速度
 
 | 引擎 | 速度 | 硬件利用率 |
 |------|------|-----------|
@@ -175,6 +175,25 @@ RTX 3090 上 LLaMA-2-7B decode 速度：
 - **CUDA 加速比**：GPU 推理速度约为 CPU 的 4 倍（stories15M 模型）
 - **自定义 SiLU Kernel**：比 PyTorch 原生实现略快约 0.3%
 - **cuBLAS MatMul**：矩阵乘法使用 cuBLAS 加速，替换了初始的手写 naive kernel
+
+### 与 sglang 对比（单卡 H20，LLaMA-2-7B，输入 1024 / 输出 1024）
+
+在同一张 H20（HBM3 带宽约 4.0 TB/s）上，用相同的 1024 输入 / 1024 输出、batch=1、贪心解码做端到端对比。sglang 用 `bench_serving`（`--random-input-len 1024 --random-output-len 1024`），hxinfer 用对应的自定义基准。
+
+| 指标 | hxinfer (batch=1) | sglang (并发=1) | 说明 |
+|------|------:|------:|------|
+| Decode 吞吐 (tok/s) | 34.5 | 154.4 | sglang 约 **4.5×** |
+| 单 token 延迟 ITL (ms) | 29.0 | 6.4 | 越低越好 |
+| 首 token 延迟 TTFT (ms) | 12001 | 69.5 | sglang 约 **173×**，见下 |
+| 理论带宽极限 (tok/s) | \~301 | \~301 | 同卡同模型，两者共享此上限 |
+
+**说明与差距来源：**
+
+- **Decode（约 4.5× 差距）**：hxinfer 单 token 走 batch=1 的朴素 attention + 逐算子调用，没有 CUDA Graph 消除 kernel launch 开销，也没有 FlashAttention 类的访存优化，34.5 tok/s 仅到理论带宽极限（约 301 tok/s）的 **11%**。sglang 的 154 tok/s 也远未到单请求上限——单请求场景两者都受制于 kernel 调度与访存效率，而非算力。
+- **TTFT（约 173× 差距，最关键的架构弱点）**：hxinfer 的 prefill 是**逐 token 串行**过模型（1024 个 token 一个一个 forward），所以首 token 要等约 12 秒；sglang 把整段 prompt 作为一个批次一次性并行 prefill，只需约 70ms。这是 hxinfer 当前最大的架构短板。
+- **并发吞吐**：sglang 靠 continuous batching + PagedAttention，在高并发（约 291 路）下总吞吐可达约 **2900 tok/s**；hxinfer 目前只支持 batch=1，没有连续批处理，无法在这个维度扩展。
+
+**结论**：hxinfer 是一个从零手写、零框架依赖的**教学/研究型**推理引擎，单请求 decode 已能到理论带宽的一成、正确复现 LLaMA-2-7B 的完整前向；但相比 sglang 这类生产级引擎，差距集中在三处工程优化上——**批量 prefill、CUDA Graph、continuous batching**，这也是后续最值得补齐的方向。
 
 ## 开发历程
 
