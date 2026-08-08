@@ -9,7 +9,7 @@
 #include "base/allocator.h"
 #include "base/config.h"
 #include "tensor/tensor.h"
-#include "model/causal_lm_model.h"
+#include "llama_weight_loader.h"
 
 namespace hxinfer {
 
