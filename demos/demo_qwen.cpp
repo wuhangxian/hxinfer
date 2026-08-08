@@ -9,7 +9,7 @@
 #include "base/config.h"
 #include "tensor/tensor.h"
 #include "op/math_ops.h"
-#include "model/causal_lm_model.h"
+#include "qwen_weight_loader.h"
 #include "llama_weight_loader.h"
 #include "qwen_tokenizer.h"
 
@@ -27,7 +27,7 @@ int main(int argc, char** argv) {
 
     std::cout << "\n>>> [1/3] Loading Qwen2.5-7B from safetensors...\n";
     ModelConfig config;
-    auto model = LlamaWeightLoader::load(DATA_DIR, config, cpu_alloc, cuda_alloc);
+    auto model = QwenWeightLoader::load(DATA_DIR, config, cpu_alloc, cuda_alloc);
 
     std::cout << "\n>>> [2/3] Loading tokenizer...\n";
     QwenTokenizer tokenizer(TOKEN_PATH);
