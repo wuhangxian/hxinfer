@@ -9,7 +9,7 @@
 #include "base/config.h"
 #include "tensor/tensor.h"
 #include "op/math_ops.h"
-#include "model/causal_lm_model.h"
+#include "llama_weight_loader.h"
 #include "llama_weight_loader.h"
 #include "llama7b_tokenizer.h"
 
