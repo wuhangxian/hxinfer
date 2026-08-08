@@ -41,38 +41,65 @@ hxinfer/
 │   │   ├── base/              # Allocator、Buffer、Config、Dispatch
 │   │   ├── tensor/            # Tensor 抽象层
 │   │   ├── layer/             # Attention、Embedding、Linear、RMSNorm、SwiGLU、Transformer
-│   │   ├── model/            # LlamaModel 顶层定义
+│   │   ├── model/             # CausalLMModel（基类）、LlamaModel、Qwen2Model
 │   │   ├── op/                # 算子声明（CPU/CUDA 自动调度）
-│   │   └── cache/            # PrefixCacheManager
+│   │   └── cache/             # PrefixCacheManager
 │   └── src/
 │       ├── base/             # CPU/CUDA 分配器、Buffer
 │       ├── tensor/           # Tensor 实现、CPU↔GPU 传输
 │       ├── layer/            # 各层 forward 实现
-│       ├── model/            # LlamaModel forward 管线
+│       ├── model/            # CausalLMModel forward 管线
 │       └── op/
 │           ├── cpu/          # CPU 算子（纯 C++）
 │           └── cuda/         # 手写 CUDA kernel + cuBLAS
 ├── model_loaders/             # 模型加载器（独立模块）
 │   ├── include/
-│   │   ├── safetensors_loader.h   # 通用 safetensors 读取器
-│   │   └── llama_weight_loader.h  # LLaMA/Qwen 权重组装器
+│   │   ├── safetensors_loader.h     # 通用 safetensors 读取器
+│   │   ├── llama_weight_loader.h    # LLaMA 权重组装器 → LlamaModel
+│   │   └── qwen_weight_loader.h     # Qwen2 权重组装器 → Qwen2Model
 │   └── src/
 │       ├── safetensors_loader.cpp
-│       └── llama_weight_loader.cpp
+│       ├── llama_weight_loader.cpp
+│       └── qwen_weight_loader.cpp
 ├── tokenizer/                 # 分词器（独立模块）
 │   ├── include/
-│   │   ├── llama7b_tokenizer.h    # SentencePiece tokenizer
-│   │   ├── llama_tokenizer.h
-│   │   └── qwen_tokenizer.h       # Byte-level BPE tokenizer
+│   │   ├── llama7b_tokenizer.h      # SentencePiece tokenizer
+│   │   └── qwen_tokenizer.h         # Byte-level BPE tokenizer
 │   └── src/
 │       ├── llama7b_tokenizer.cpp
-│       ├── llama_tokenizer.cpp
 │       └── qwen_tokenizer.cpp
 ├── demos/                     # 演示程序 & Benchmark
 ├── tools/
 │   └── benchmark_pytorch.py  # PyTorch 基准对比
 ├── main.cpp                   # 主入口
 └── CMakeLists.txt
+```
+
+## 架构设计
+
+### 引擎核心与加载器解耦
+
+```
+engine/          model_loaders/           tokenizer/
+  ↓                ↓                        ↓
+推理计算         读 safetensors            文本编解码
+forward()        组装模型对象              encode/decode
+                 ↓
+          ┌─────┴─────┐
+     LlamaModel    Qwen2Model
+     (LLaMA-2/3)  (Qwen2/2.5)
+```
+
+- `engine/` — 纯推理核心，定义 CausalLMModel 基类 + 各模型子类，不依赖加载器
+- `model_loaders/` — 每个模型架构一个 weight loader，读取 safetensors + 组装模型
+- `tokenizer/` — 每种分词方式一个实现，与引擎完全独立
+
+### 模型类继承结构
+
+```
+CausalLMModel（基类：定义 Embedding → Transformer × N → Norm → LM Head 管线）
+├── LlamaModel     （LLaMA-2/3, Mistral, InternLM2/3）
+└── Qwen2Model     （Qwen2, Qwen2.5）
 ```
 
 ## 性能对比
@@ -164,28 +191,6 @@ export HXINFER_DATA_DIR=/path/to/model
 | ArgMax | ✓ | ✓ | 贪心解码 |
 | Sample | ✓ | ✓ | Temperature + Top-p 采样 |
 | Bias Add | — | ✓ | Q/K/V bias（Qwen2.5）|
-
-## 设计亮点
-
-### 1. 通用 safetensors 读取器
-
-`SafetensorsReader` 直接 mmap HuggingFace safetensors 文件，解析 header JSON，按 tensor 名获取权重。支持多 shard、BF16→FP16 自动转换。无需任何预处理脚本。
-
-### 2. 模型加载器与引擎解耦
-
-- `engine/` — 纯推理核心，不依赖加载器
-- `model_loaders/` — 权重加载 + 模型组装
-- `tokenizer/` — 分词器
-
-三个独立模块，通过 CMake 编译为独立静态库。
-
-### 3. CPU/CUDA 双后端自动路由
-
-每个算子自动检测 Tensor 设备类型，分发到 CPU 或 CUDA 实现。
-
-### 4. DeviceAllocator → Buffer → Tensor 三层内存管理
-
-RAII 机制确保内存生命周期自动管理，Allocator 抽象支持 CPU/GPU 统一接口。
 
 ## License
 
