@@ -1,7 +1,7 @@
 #ifndef HXINFER_LLAMA_WEIGHT_LOADER_H
 #define HXINFER_LLAMA_WEIGHT_LOADER_H
 
-#include "model/causal_lm_model.h"
+#include "model/llama_model.h"
 #include "safetensors_loader.h"
 #include "base/allocator.h"
 #include <string>
