@@ -5,7 +5,7 @@ namespace hxinfer{
         data_=allocator_->allocate(byte_size_);
     }
     Buffer::~Buffer() {
-        if(data_== nullptr){
+        if(data_ != nullptr){
             allocator_->release(data_);
             data_= nullptr;
         }
