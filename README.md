@@ -44,6 +44,26 @@ hxinfer/
 └── CMakeLists.txt     # CMake 构建配置
 ```
 
+## 性能对比
+
+在单张 H20 GPU 上，使用 LLaMA-2-7B（FP16），输入 1024 tokens / 输出 1024 tokens，贪心解码，对 hxinfer、PyTorch（HuggingFace）、SGLang 三个引擎进行端到端对比。
+
+| 指标 | hxinfer | PyTorch (HF) | SGLang | 说明 |
+|------|--------:|-------------:|--------:|------|
+| TTFT (ms) | 10,270 | 123 | 18.5 | hxinfer 逐 token 串行 prefill，PyTorch/SGLang 批量并行 prefill |
+| ITL (ms) | 15.3 | 187.3 | 6.85 | 越低越好；hxinfer 比 PyTorch 快 12× |
+| Decode (tok/s) | 65.6 | 5.3 | 146.2 | 纯 decode 阶段吞吐 |
+| 总吞吐 (tok/s) | 79.1 | 10.7 | 291.6 | 端到端 (prefill + decode) 总吞吐 |
+| E2E 延迟 (s) | 25.9 | 192.0 | 7.0 | 完成全部 2048 tokens 的总时间 |
+
+**关键结论：**
+
+- **Decode 阶段 hxinfer 远超 PyTorch** — 65.6 vs 5.3 tok/s（12×），因为 hxinfer 有增量 KV Cache，PyTorch 每步重算全部历史
+- **Prefill 是当前最大短板** — hxinfer 逐 token 串行 prefill 导致 TTFT 高达 10.3s，PyTorch 批量并行仅 123ms
+- **与 SGLang 差距集中在** — 批量 prefill、CUDA Graph、FlashAttention、Continuous Batching
+
+
+
 ## 编译
 
 ### 依赖
