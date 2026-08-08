@@ -3,117 +3,99 @@
 #include <vector>
 #include <chrono>
 #include <string>
+#include <cstdlib>
+#include "cuda_runtime.h"
 
-// 1. 引入底层基建
 #include "base/allocator.h"
 #include "base/config.h"
 #include "tensor/tensor.h"
 #include "op/math_ops.h"
-
-// 2. 引入你的三大核心架构模块！
-#include "model/llama_model.h"
-#include "loader/llama15m_loader.h"
-#include "loader/llama_tokenizer.h"
+#include "model/causal_lm_model.h"
+#include "llama_weight_loader.h"
+#include "llama7b_tokenizer.h"
 
 using namespace hxinfer;
 
-// =========================================================================
-// 🌟 独立出来的运行函数：LLaMA 15M 专属点火舱 (以后定死不动了！)
-// =========================================================================
-void run_llama_15m_stories() {
-    // 1. 准备物理内存分配器
-    std::shared_ptr<Allocator> cpu_allocator = std::make_shared<CPUAllocator>();
+void run_llama_7b() {
+    const char* env_data = std::getenv("HXINFER_DATA_DIR");
+    const std::string DATA_DIR   = env_data ? std::string(env_data) : "/workspace/models/llama2-7b";
+    const std::string TOKEN_PATH = DATA_DIR + "/tokenizer.model";
+    const std::string PROMPT     = "Once upon a time";
+    const int MAX_NEW_TOKENS     = 200;
 
-    // 注意：请确保你的可执行文件同级目录（或指定的相对路径）下有 models 文件夹
-    std::string model_path = "models/stories15M.bin";
-    std::string tokenizer_path = "models/tokenizer.bin";
+    auto cpu_alloc  = std::make_shared<CPUAllocator>();
+    auto cuda_alloc = std::make_shared<CUDAAllocator>();
+
+    std::cout << "\n>>> [1/3] Loading model from safetensors..." << std::endl;
     ModelConfig config;
+    auto model = LlamaWeightLoader::load(DATA_DIR, config, cpu_alloc, cuda_alloc);
 
-    // 2. 召唤装配厂：解析二进制，零拷贝拼装大模型！
-    std::cout << "\n>>> [1/3] 正在加载 LLaMA 15M 权重与拓扑结构..." << std::endl;
-    auto llama_engine = Llama15MLoader::load_model(model_path, config, cpu_allocator);
+    std::cout << "\n>>> [2/3] Loading tokenizer..." << std::endl;
+    Llama7BTokenizer tokenizer(TOKEN_PATH);
 
-    // 3. 召唤翻译官：加载词表
-    std::cout << "\n>>> [2/3] 正在初始化 LLaMA 分词器..." << std::endl;
-    LlamaTokenizer tokenizer(tokenizer_path, config.vocab_size);
+    std::cout << "\n>>> [3/3] Preparing I/O tensors..." << std::endl;
+    auto input_cpu = std::make_shared<Tensor>(cpu_alloc, std::vector<int>{1}, DataType::kDataTypeFP32);
+    auto input_gpu = std::make_shared<Tensor>(cuda_alloc, std::vector<int>{1}, DataType::kDataTypeFP32);
+    auto logits    = std::make_shared<Tensor>(cuda_alloc, std::vector<int>{1, config.vocab_size}, DataType::kDataTypeFP32);
+    input_gpu->tensor_set_device_type(DeviceType::kDeviceCUDA);
+    logits->tensor_set_device_type(DeviceType::kDeviceCUDA);
 
-    // 4. 准备输入输出的 Tensor 容器
-    std::cout << "\n>>> [3/3] 分配 I/O 张量，准备进入自回归生成..." << std::endl;
-    auto input_tensor = std::make_shared<Tensor>(cpu_allocator, std::vector<int>{1}, DataType::kDataTypeFP32);
-    auto logits_tensor = std::make_shared<Tensor>(cpu_allocator, std::vector<int>{1, config.vocab_size}, DataType::kDataTypeFP32);
+    std::vector<int> tokens = tokenizer.encode(PROMPT);
+    tokens.insert(tokens.begin(), tokenizer.bos_id());
 
-    // 5. 正式开始推理！
-    std::cout << "\n---------------- 📖 童话故事生成开始 ----------------\n" << std::endl;
+    std::cout << "\nPrompt: \"" << PROMPT << "\"" << std::endl;
+    std::cout << "Tokens: " << tokens.size() << std::endl;
+    std::cout << "\n--- Generation ---" << std::endl;
+    std::cout << PROMPT << std::flush;
 
-    int current_token_id = 1; // 1 是 LLaMA 的 <BOS> (Begin of Sequence)
-    int max_generate_step = 200; // 生成 200 个词
+    auto t_start = std::chrono::high_resolution_clock::now();
 
-    auto total_start_time = std::chrono::high_resolution_clock::now();
-
-    for (int pos = 0; pos < max_generate_step; pos++) {
-        auto step_start = std::chrono::high_resolution_clock::now();
-
-        // 将当前的 token 塞进 input_tensor
-    // 将当前的 token 塞进 input_tensor（🌟 修正：按底层要求的 int 格式强行写入！）
-        int* input_ptr = input_tensor->tensor_data_ptr<int>();
-        input_ptr[0] = current_token_id; // 绝对不要转成 float，原汁原味的 int 喂进去！
-
-        // ⚡ 核心前向传播！数据瞬间穿透 6 层 Transformer Block！
-        llama_engine->forward(input_tensor, logits_tensor, pos);
-
-        // 🔍 从 32000 个概率打分里，找出得分最高的词的 ID (贪心解码)
-        int next_token_id = 0;
-        // 如果你的 math_ops.h 里是封装在 MathOps 类里的，记得加上 MathOps::
-        next_token_id=argmax_tensor(logits_tensor);
-
-        // 🗣️ 解码并打印
-        std::string word = tokenizer.decode(next_token_id);
-
-        // 🛑 核心刹车逻辑：如果模型吐出了 <EOS> 结束符，立刻终止生成！
-        if (next_token_id == 2) {
-            std::cout << "\n\n[系统提示] 接收到 <EOS> 结束符，模型自然停止生成。" << std::endl;
-            break;
-        }
-        if (word == "\n") {
-            std::cout << word << std::flush;
-        } else {
-            // 计算瞬间速度
-            auto step_end = std::chrono::high_resolution_clock::now();
-            auto step_us = std::chrono::duration_cast<std::chrono::microseconds>(step_end - step_start).count();
-            float tok_per_sec = 1000000.0f / (step_us == 0 ? 1 : step_us);
-
-            // 极客风输出：带上灰色速度指标
-            std::cout << word << "\033[90m[" << tok_per_sec << " token/s]"<<'\n'<<"\033[0m" << std::flush;
-        }
-
-
-        // 循环推进
-        current_token_id = next_token_id;
-
+    int next_token = tokens[0];
+    for (int pos = 0; pos < (int)tokens.size(); pos++) {
+        int* ptr = input_cpu->tensor_data_ptr<int>();
+        ptr[0] = tokens[pos];
+        cudaMemcpy(input_gpu->raw_data_ptr(), input_cpu->raw_data_ptr(),
+                   sizeof(int), cudaMemcpyHostToDevice);
+        model->forward(input_gpu, logits, pos);
+        if (pos == (int)tokens.size() - 1)
+            next_token = argmax_tensor(logits);
     }
 
-    auto total_end_time = std::chrono::high_resolution_clock::now();
-    auto duration_ms = std::chrono::duration_cast<std::chrono::milliseconds>(total_end_time - total_start_time).count();
+    int generated = 0;
+    int pos = (int)tokens.size();
+    while (generated < MAX_NEW_TOKENS) {
+        std::string word = tokenizer.decode(next_token);
+        std::cout << word << std::flush;
+        if (next_token == tokenizer.eos_id()) break;
 
-    std::cout << "\n\n---------------- 故事生成结束 ----------------\n";
-    std::cout << "⏱️  总耗时: " << duration_ms / 1000.0f << " 秒\n";
-    std::cout << "🚀 平均生成速度: " << (float)max_generate_step / (duration_ms / 1000.0f) << " tokens/秒\n";
+        int* ptr = input_cpu->tensor_data_ptr<int>();
+        ptr[0] = next_token;
+        cudaMemcpy(input_gpu->raw_data_ptr(), input_cpu->raw_data_ptr(),
+                   sizeof(int), cudaMemcpyHostToDevice);
+        model->forward(input_gpu, logits, pos);
+        next_token = argmax_tensor(logits);
+        pos++;
+        generated++;
+    }
+
+    auto t_end = std::chrono::high_resolution_clock::now();
+    float ms = std::chrono::duration_cast<std::chrono::milliseconds>(t_end - t_start).count();
+
+    std::cout << "\n\n--- Done ---" << std::endl;
+    std::cout << "Tokens generated: " << generated << std::endl;
+    std::cout << "Time: " << ms / 1000.0f << " s" << std::endl;
+    std::cout << "Speed: " << generated / (ms / 1000.0f) << " tok/s" << std::endl;
 }
 
-// =========================================================================
-// 🎮 绝对清爽的主程序入口
-// =========================================================================
 int main() {
     std::cout << "===================================================" << std::endl;
-    std::cout << "🔥 HXInfer Engine - 纯 C++ 零依赖推理链路点火！🔥" << std::endl;
+    std::cout << "HXInfer Engine - LLM Inference Framework" << std::endl;
     std::cout << "===================================================" << std::endl;
 
     try {
-        // 以后如果有新模型，比如 run_llama_7b()，直接在这里换一行代码就行了！
-        run_llama_15m_stories();
-
+        run_llama_7b();
     } catch (const std::exception& e) {
-        std::cerr << "\n❌ 引擎崩溃: " << e.what() << std::endl;
+        std::cerr << "\nError: " << e.what() << std::endl;
     }
 
     return 0;
