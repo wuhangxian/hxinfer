@@ -4,9 +4,9 @@
 
 ## 特性
 
-- **LLaMA 模型支持** — LLaMA-2 15M（CPU/GPU）和 7B（GPU），支持 YaRN RoPE 扩展到 128K 上下文长度
+- **LLaMA 模型支持** — LLaMA-2 7B（GPU），支持 YaRN RoPE 扩展到 128K 上下文长度
 - **双后端支持** — CPU（纯 C++）和 CUDA（手写 Kernel + cuBLAS），运行时 Zero-Cost Dispatch
-- **FP16 / FP32 双精度** — 7B 模型使用 FP16 激活值（与 PyTorch 行为一致），15M 使用 FP32
+- **FP16 推理** — 使用 FP16 激活值，与 PyTorch 行为一致
 - **零框架依赖** — 不依赖 PyTorch/TensorFlow，仅需 C++17 编译器 + CUDA Toolkit
 - **算子融合** — 融合 QKV 投影、融合 Gate+Up 投影、融合 SwiGLU（gate+silu+mul+down）
 - **mmap 零拷贝加载** — 模型权重通过内存映射直接加载，避免冗余拷贝
@@ -24,7 +24,7 @@ hxinfer/
 │   ├── tensor/        # Tensor 抽象层（CPU/CUDA 切换、reshape、类型安全访问）
 │   ├── layer/         # Embedding、Linear、RMSNorm、Attention、SwiGLU、Transformer
 │   ├── model/         # LlamaModel 顶层定义
-│   ├── loader/        # Llama15MLoader、Llama7BLoader、分词器
+│   ├── loader/        # Llama7BLoader、分词器
 │   ├── op/            # 算子声明（CPU/CUDA 自动调度）
 │   └── cache/         # PrefixCacheManager（前缀缓存加速）
 ├── src/
@@ -40,7 +40,6 @@ hxinfer/
 ├── tools/
 │   ├── convert_weights.py   # HuggingFace 权重 → hxinfer 二进制格式
 │   └── benchmark_pytorch.py # PyTorch 基准对比
-├── models/            # 15M 玩具模型权重（随仓库自带）
 ├── main.cpp           # 主入口：自回归文本生成
 └── CMakeLists.txt     # CMake 构建配置
 ```
@@ -72,15 +71,6 @@ cmake --build . -j$(nproc)
 - `demos/` 下的各独立演示程序
 
 ## 使用
-
-### 15M CPU/GPU 推理
-
-```bash
-# 从项目根目录运行（模型路径为相对路径 models/stories15M.bin）
-./build/hxinfer_engine
-```
-
-程序会加载 `models/stories15M.bin`（一个 15M 参数的微型 LLaMA 模型），进行自回归文本生成。
 
 ### 7B GPU 推理
 
@@ -172,7 +162,6 @@ Input → RMSNorm → Attention(+Residual) → RMSNorm → SwiGLU(+Residual) →
 | hxinfer | ~51 tok/s | 带宽上限的 74% |
 | 理论带宽极限 | ~69 tok/s | 100%（936 GB/s） |
 
-- **CUDA 加速比**：GPU 推理速度约为 CPU 的 4 倍（stories15M 模型）
 - **自定义 SiLU Kernel**：比 PyTorch 原生实现略快约 0.3%
 - **cuBLAS MatMul**：矩阵乘法使用 cuBLAS 加速，替换了初始的手写 naive kernel
 
