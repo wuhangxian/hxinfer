@@ -107,19 +107,19 @@ CausalLMModel（基类：定义 Embedding → Transformer × N → Norm → LM H
 | 指标 | hxinfer v1.0.0 | PyTorch (HF) | SGLang v0.5.2 |
 |------|---------------:|-------------:|---------------:|
 | **LLaMA-2-7B (FP16)** | | | |
-| TTFT (ms) | 10,338 | 123 | 18.5 |
-| ITL (ms) | 15.40 | 187.30 | 6.85 |
-| Decode (tok/s) | 64.9 | 5.3 | 146.2 |
+| TTFT (ms) | 10,384 | 123 | 18.5 |
+| ITL (ms) | 15.44 | 187.30 | 6.85 |
+| Decode (tok/s) | 64.8 | 5.3 | 146.2 |
 | 总吞吐 (tok/s) | 78.5 | 10.7 | 291.6 |
 | **Qwen2.5-7B (FP16)** | | | |
 | TTFT (ms) | 9,301 | 124 | 18.4 |
-| ITL (ms) | 13.47 | 185.04 | 5.66 |
+| ITL (ms) | 13.46 | 185.04 | 5.66 |
 | Decode (tok/s) | 74.3 | 5.4 | 177.0 |
 | 总吞吐 (tok/s) | 88.7 | 10.8 | 352.9 |
 
 ### 关键结论
 
-- **Decode 阶段 hxinfer 远超 PyTorch** — 65.6 vs 5.3 tok/s（12×），因为 hxinfer 有增量 KV Cache，PyTorch 每步重算全部历史
+- **Decode 阶段 hxinfer 远超 PyTorch** — 64.8 vs 5.3 tok/s（12×），因为 hxinfer 有增量 KV Cache，PyTorch 每步重算全部历史
 - **Qwen2.5 比 LLaMA-2 快 13%** — GQA（4 KV heads vs 32）减少 KV cache 读写带宽，层数更少（28 vs 32）
 - **与 SGLang 差距集中在** — 批量 prefill、CUDA Graph、FlashAttention、Continuous Batching
 
