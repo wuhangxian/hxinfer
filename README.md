@@ -36,7 +36,7 @@
 
 ```
 hxinfer/
-├── engine/                    # 推理引擎核心
+├── hxinfer-engine/            # 推理引擎核心
 │   ├── include/
 │   │   ├── base/              # Allocator、Buffer、Config、Dispatch
 │   │   ├── tensor/            # Tensor 抽象层
@@ -69,8 +69,6 @@ hxinfer/
 │       ├── llama7b_tokenizer.cpp
 │       └── qwen_tokenizer.cpp
 ├── demos/                     # 演示程序 & Benchmark
-├── tools/
-│   └── benchmark_pytorch.py  # PyTorch 基准对比
 ├── main.cpp                   # 主入口
 └── CMakeLists.txt
 ```
@@ -80,17 +78,17 @@ hxinfer/
 ### 引擎核心与加载器解耦
 
 ```
-engine/          model_loaders/           tokenizer/
-  ↓                ↓                        ↓
-推理计算         读 safetensors            文本编解码
-forward()        组装模型对象              encode/decode
-                 ↓
-          ┌─────┴─────┐
-     LlamaModel    Qwen2Model
-     (LLaMA-2/3)  (Qwen2/2.5)
+hxinfer-engine/   model_loaders/        tokenizer/
+  ↓                  ↓                     ↓
+推理计算            读 safetensors          文本编解码
+forward()           组装模型对象            encode/decode
+                    ↓
+             ┌──────┴──────┐
+        LlamaModel     Qwen2Model
+        (LLaMA-2/3)   (Qwen2/2.5)
 ```
 
-- `engine/` — 纯推理核心，定义 CausalLMModel 基类 + 各模型子类，不依赖加载器
+- `hxinfer-engine/` — 纯推理核心，定义 CausalLMModel 基类 + 各模型子类，不依赖加载器
 - `model_loaders/` — 每个模型架构一个 weight loader，读取 safetensors + 组装模型
 - `tokenizer/` — 每种分词方式一个实现，与引擎完全独立
 
@@ -114,14 +112,14 @@ CausalLMModel（基类：定义 Embedding → Transformer × N → Norm → LM H
 | Decode (tok/s) | 64.9 | 5.3 | 146.2 |
 | 总吞吐 (tok/s) | 78.5 | 10.7 | 291.6 |
 | **Qwen2.5-7B (FP16)** | | | |
-| TTFT (ms) | 9,301 | — | — |
-| ITL (ms) | 13.47 | — | — |
-| Decode (tok/s) | 74.3 | — | — |
-| 总吞吐 (tok/s) | 88.7 | — | — |
+| TTFT (ms) | 9,301 | 124 | 18.4 |
+| ITL (ms) | 13.47 | 185.04 | 5.66 |
+| Decode (tok/s) | 74.3 | 5.4 | 177.0 |
+| 总吞吐 (tok/s) | 88.7 | 10.8 | 352.9 |
 
 ### 关键结论
 
-- **Decode 阶段 hxinfer 远超 PyTorch** — 65.6 vs 5.3 tok/s（12×），因为 hxinfer 有增量 KV Cache
+- **Decode 阶段 hxinfer 远超 PyTorch** — 65.6 vs 5.3 tok/s（12×），因为 hxinfer 有增量 KV Cache，PyTorch 每步重算全部历史
 - **Qwen2.5 比 LLaMA-2 快 13%** — GQA（4 KV heads vs 32）减少 KV cache 读写带宽，层数更少（28 vs 32）
 - **与 SGLang 差距集中在** — 批量 prefill、CUDA Graph、FlashAttention、Continuous Batching
 
