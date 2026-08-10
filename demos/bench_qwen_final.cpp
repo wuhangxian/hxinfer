@@ -19,6 +19,7 @@
 #include "op/math_ops.h"
 #include "qwen_tokenizer.h"
 #include "qwen_weight_loader.h"
+#include "qwen_quality_gate.h"
 #include "tensor/tensor.h"
 
 using namespace hxinfer;
@@ -29,12 +30,9 @@ constexpr int kInputLength = 1024;
 constexpr int kOutputLength = 1024;
 constexpr int kExpectedVocabSize = 152064;
 constexpr int kConfiguredSequenceCapacity = 4096;
+constexpr int kReferenceLength = 64;
 constexpr std::array<int, 3> kChatMlPrefix = {151644, 8948, 198};
 constexpr std::array<int, 5> kChatMlSuffix = {151645, 198, 151644, 77091, 198};
-constexpr std::array<int, 16> kHfOraclePrefix = {
-    2132, 5868, 1075, 498, 3003, 3897, 1378, 19516,
-    10010, 315, 1467, 11, 892, 4994, 311, 387,
-};
 
 void check_cuda(cudaError_t error, const std::string& operation) {
     if (error != cudaSuccess) {
@@ -73,10 +71,25 @@ std::string token_fixture_path() {
         "Qwen ShareGPT token fixture not found; set HXINFER_TOKEN_IDS_FILE or run from the repository root");
 }
 
-std::vector<int> load_token_ids(const std::string& path) {
+std::string reference_fixture_path(const std::string& file_name) {
+    const std::array<std::string, 2> candidates = {
+        "tests/fixtures/" + file_name,
+        "/workspace/project/hxinfer/tests/fixtures/" + file_name,
+    };
+    for (const auto& candidate : candidates) {
+        std::ifstream probe(candidate);
+        if (probe.good()) {
+            return candidate;
+        }
+    }
+    throw std::runtime_error("Reference fixture not found: " + file_name);
+}
+
+std::vector<int> load_id_list(
+    const std::string& path, std::size_t expected_count, const std::string& label) {
     std::ifstream input(path);
     if (!input) {
-        throw std::runtime_error("Cannot open token fixture: " + path);
+        throw std::runtime_error("Cannot open " + label + " fixture: " + path);
     }
 
     std::ostringstream contents;
@@ -110,10 +123,16 @@ std::vector<int> load_token_ids(const std::string& path) {
         tokens.push_back(static_cast<int>(token));
     }
 
-    if (tokens.size() != kInputLength) {
+    if (tokens.size() != expected_count) {
         throw std::runtime_error(
-            "Expected exactly 1024 input token IDs, got " + std::to_string(tokens.size()));
+            "Expected exactly " + std::to_string(expected_count) + " " + label +
+            " token IDs, got " + std::to_string(tokens.size()));
     }
+    return tokens;
+}
+
+std::vector<int> load_token_ids(const std::string& path) {
+    std::vector<int> tokens = load_id_list(path, kInputLength, "input");
     for (size_t i = 0; i < kChatMlPrefix.size(); ++i) {
         if (tokens[i] != kChatMlPrefix[i]) {
             throw std::runtime_error("Token fixture does not have the expected Qwen ChatML system prefix");
@@ -139,15 +158,6 @@ void require_finite_logits(const std::shared_ptr<Tensor>& logits, int count, con
     }
 }
 
-size_t oracle_prefix_length(const std::vector<int>& generated) {
-    size_t matched = 0;
-    while (matched < generated.size() && matched < kHfOraclePrefix.size() &&
-           generated[matched] == kHfOraclePrefix[matched]) {
-        ++matched;
-    }
-    return matched;
-}
-
 }  // namespace
 
 int main() {
@@ -156,13 +166,23 @@ int main() {
         const std::string data_dir =
             env_data ? std::string(env_data) : "/workspace/models/Qwen2.5-7B-Instruct";
         const std::string fixture_path = token_fixture_path();
+        const std::string bf16_reference_path = reference_fixture_path(
+            "qwen_sharegpt_1024_bf16_output_64_token_ids.txt");
+        const std::string fp16_reference_path = reference_fixture_path(
+            "qwen_sharegpt_1024_fp16_output_64_token_ids.txt");
 
         if (kInputLength + kOutputLength > kConfiguredSequenceCapacity) {
             throw std::runtime_error("Requested input + output exceeds the configured 4096-token KV capacity");
         }
         const std::vector<int> tokens = load_token_ids(fixture_path);
+        const std::vector<int> bf16_reference = load_id_list(
+            bf16_reference_path, kReferenceLength, "BF16 reference");
+        const std::vector<int> fp16_reference = load_id_list(
+            fp16_reference_path, kReferenceLength, "FP16 reference");
 
         std::cout << "Fixture: " << fixture_path << '\n';
+        std::cout << "BF16 reference: " << bf16_reference_path << '\n';
+        std::cout << "FP16 reference: " << fp16_reference_path << '\n';
         std::cout << "Input: " << tokens.size() << " fixed ShareGPT ChatML token IDs\n";
         std::cout << "Output: " << kOutputLength << " greedy tokens (ignore EOS)\n";
         std::cout << "Model: " << data_dir << '\n';
@@ -268,7 +288,8 @@ int main() {
             std::chrono::duration<double, std::milli>(decode_end - decode_start).count();
         const double total_ms = prefill_ms + decode_ms;
         const std::unordered_set<int> unique_tokens(generated_ids.begin(), generated_ids.end());
-        const size_t oracle_match = oracle_prefix_length(generated_ids);
+        const auto quality = hxinfer::qwen_benchmark::evaluate_quality(
+            generated_ids, bf16_reference, fp16_reference);
         const bool repeated_o_prefix =
             output_text.size() >= 32 && output_text.compare(0, 32, std::string(32, 'O')) == 0;
 
@@ -288,19 +309,30 @@ int main() {
         std::cout << "Output tokens: " << generated_ids.size() << '\n';
         std::cout << "Unique output tokens: " << unique_tokens.size() << '\n';
         std::cout << "Finite logits: yes (prefill and every decode step)\n";
-        std::cout << "HF oracle prefix match: " << oracle_match << '/' << kHfOraclePrefix.size() << '\n';
+        std::cout << "BF16 oracle LCP: " << quality.bf16_prefix_length
+                  << '/' << bf16_reference.size() << " (required >= "
+                  << hxinfer::qwen_benchmark::kRequiredBf16Prefix << ")\n";
+        std::cout << "FP16 oracle LCP: " << quality.fp16_prefix_length
+                  << '/' << fp16_reference.size() << " (informational)\n";
+        std::cout << "Max consecutive identical token run: "
+                  << quality.max_identical_token_run << " (required <= "
+                  << hxinfer::qwen_benchmark::kMaxIdenticalTokenRun << ")\n";
         std::cout << "Prefill: " << prefill_ms / 1000.0 << " s, "
                   << kInputLength / (prefill_ms / 1000.0) << " tok/s\n";
         std::cout << "TTFT: " << prefill_ms << " ms\n";
         std::cout << "Decode: " << decode_ms / 1000.0 << " s for "
                   << (kOutputLength - 1) << " post-prefill forward steps\n";
-        std::cout << "ITL: " << decode_ms / (kOutputLength - 1) << " ms\n";
+        std::cout << "Validation-inclusive ITL: "
+                  << decode_ms / (kOutputLength - 1) << " ms\n";
         std::cout << "Total: " << total_ms / 1000.0 << " s\n";
         std::cout << "================================\n";
 
-        if (generated_ids.front() != kHfOraclePrefix.front()) {
-            std::cerr << "QUALITY FAILURE: first greedy token " << generated_ids.front()
-                      << " differs from HuggingFace oracle " << kHfOraclePrefix.front() << '\n';
+        if (!quality.accepted()) {
+            std::cerr << "QUALITY FAILURE: BF16 LCP=" << quality.bf16_prefix_length
+                      << " (required >= " << hxinfer::qwen_benchmark::kRequiredBf16Prefix
+                      << "), max identical run=" << quality.max_identical_token_run
+                      << " (required <= " << hxinfer::qwen_benchmark::kMaxIdenticalTokenRun
+                      << ")\n";
             return 2;
         }
         if (unique_tokens.size() <= 1) {

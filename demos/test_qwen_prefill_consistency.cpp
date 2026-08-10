@@ -25,6 +25,10 @@ using namespace hxinfer;
 namespace {
 
 constexpr int kTopK = 10;
+constexpr int kRequiredOrderedTopK = 2;
+constexpr int kRequiredTokenSetTopK = 8;
+constexpr double kMaxMeanAbsoluteError = 0.03;
+constexpr float kMaxAbsoluteError = 0.20f;
 
 void check_cuda(cudaError_t error, const std::string& operation) {
     if (error != cudaSuccess) {
@@ -165,6 +169,21 @@ void print_top_k(const char* label, const std::vector<std::pair<int, float>>& va
     std::cout << '\n';
 }
 
+bool same_top_token_set(
+    const std::vector<std::pair<int, float>>& lhs,
+    const std::vector<std::pair<int, float>>& rhs,
+    int count) {
+    std::vector<int> lhs_tokens;
+    std::vector<int> rhs_tokens;
+    for (int i = 0; i < count; ++i) {
+        lhs_tokens.push_back(lhs[i].first);
+        rhs_tokens.push_back(rhs[i].first);
+    }
+    std::sort(lhs_tokens.begin(), lhs_tokens.end());
+    std::sort(rhs_tokens.begin(), rhs_tokens.end());
+    return lhs_tokens == rhs_tokens;
+}
+
 }  // namespace
 
 int main(int argc, char** argv) {
@@ -203,13 +222,35 @@ int main(int argc, char** argv) {
         print_top_k("batch top-10", batch_top);
         std::cout << "logit MAE=" << mean_absolute_error
                   << " max_abs=" << max_absolute_error << '\n';
-        if (serial_top.front().first != batch_top.front().first) {
-            std::cerr << "MISMATCH: serial top-1=" << serial_top.front().first
-                      << " batch top-1=" << batch_top.front().first << '\n';
-            return 2;
+        std::cout << "thresholds: MAE<=" << kMaxMeanAbsoluteError
+                  << " max_abs<=" << kMaxAbsoluteError
+                  << " ordered_top=" << kRequiredOrderedTopK
+                  << " token_set_top=" << kRequiredTokenSetTopK << '\n';
+
+        for (int i = 0; i < kRequiredOrderedTopK; ++i) {
+            if (serial_top[i].first != batch_top[i].first) {
+                std::cerr << "MISMATCH: ordered top-k differs at rank " << (i + 1)
+                          << ": serial=" << serial_top[i].first
+                          << " batch=" << batch_top[i].first << '\n';
+                return 2;
+            }
         }
-        std::cout << "MATCH: fresh-model serial and batch top-1="
-                  << serial_top.front().first << '\n';
+        if (!same_top_token_set(serial_top, batch_top, kRequiredTokenSetTopK)) {
+            std::cerr << "MISMATCH: serial and batch top-" << kRequiredTokenSetTopK
+                      << " token sets differ\n";
+            return 3;
+        }
+        if (mean_absolute_error > kMaxMeanAbsoluteError) {
+            std::cerr << "MISMATCH: logit MAE " << mean_absolute_error
+                      << " exceeds " << kMaxMeanAbsoluteError << '\n';
+            return 4;
+        }
+        if (max_absolute_error > kMaxAbsoluteError) {
+            std::cerr << "MISMATCH: max absolute logit error " << max_absolute_error
+                      << " exceeds " << kMaxAbsoluteError << '\n';
+            return 5;
+        }
+        std::cout << "MATCH: fresh-model serial and batch logits/top-k satisfy all thresholds\n";
         return 0;
     } catch (const std::exception& error) {
         std::cerr << "ERROR: " << error.what() << '\n';
