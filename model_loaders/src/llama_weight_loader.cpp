@@ -35,6 +35,7 @@ std::shared_ptr<LlamaModel> LlamaWeightLoader::load(
     out_config.kv_head    = cfg.value("num_key_value_heads", out_config.head);
     out_config.vocab_size = cfg["vocab_size"].get<int>();
     out_config.seq_len    = 4096;
+    out_config.norm_eps   = cfg.value("rms_norm_eps", 1e-5f);
     out_config.rope_theta = cfg.value("rope_theta", 10000.0f);
 
     if (cfg.contains("rope_scaling")) {
@@ -57,6 +58,7 @@ std::shared_ptr<LlamaModel> LlamaWeightLoader::load(
               << "  kv_heads=" << out_config.kv_head
               << "  vocab=" << out_config.vocab_size
               << "  seq_len=" << out_config.seq_len
+              << "  norm_eps=" << out_config.norm_eps
               << "  rope_theta=" << out_config.rope_theta;
     if (out_config.rope_use_yarn) {
         std::cout << "\n    YaRN: factor=" << out_config.rope_factor;
@@ -135,7 +137,7 @@ std::shared_ptr<LlamaModel> LlamaWeightLoader::load(
     }
 
     auto embedding_layer = std::make_shared<EmbeddingLayer>(embed_w);
-    auto final_norm = std::make_shared<RMSNormLayer>(final_norm_w);
+    auto final_norm = std::make_shared<RMSNormLayer>(final_norm_w, c.norm_eps);
     auto lm_head = std::make_shared<LinearLayer>(lm_head_w);
 
     auto model = std::make_shared<LlamaModel>(

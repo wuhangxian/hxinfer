@@ -53,9 +53,9 @@ namespace hxinfer{
             prefill_attn_out_->tensor_set_device_type(dev);
             prefill_ffn_out_->tensor_set_device_type(dev);
             prefill_add_out_->tensor_set_device_type(dev);
-            attn_norm_=std::make_shared<RMSNormLayer>(attn_norm_w);
+            attn_norm_=std::make_shared<RMSNormLayer>(attn_norm_w, config_.norm_eps);
             attentionLayer_=std::make_shared<AttentionLayer>(allocator,config_,wq,wk,wv,wo);
-            ffn_norm_=std::make_shared<RMSNormLayer>(ffn_norm_w);
+            ffn_norm_=std::make_shared<RMSNormLayer>(ffn_norm_w, config_.norm_eps);
             swigluLayer_=std::make_shared<SwigluLayer>(allocator,config_,w_gate,w_up,w_down);
             if(enable_fused) swigluLayer_->enable_fused();
         }
@@ -89,9 +89,9 @@ namespace hxinfer{
             prefill_attn_out_->tensor_set_device_type(dev);
             prefill_ffn_out_->tensor_set_device_type(dev);
             prefill_add_out_->tensor_set_device_type(dev);
-            attn_norm_=std::make_shared<RMSNormLayer>(attn_norm_w);
+            attn_norm_=std::make_shared<RMSNormLayer>(attn_norm_w, config_.norm_eps);
             attentionLayer_=std::make_shared<AttentionLayer>(allocator,config_,wq,wk,wv,wo,bq,bk,bv);
-            ffn_norm_=std::make_shared<RMSNormLayer>(ffn_norm_w);
+            ffn_norm_=std::make_shared<RMSNormLayer>(ffn_norm_w, config_.norm_eps);
             swigluLayer_=std::make_shared<SwigluLayer>(allocator,config_,w_gate,w_up,w_down);
             if(enable_fused) swigluLayer_->enable_fused();
         }
@@ -111,9 +111,9 @@ namespace hxinfer{
             norm_out_->tensor_set_device_type(dev);
             attn_out_->tensor_set_device_type(dev);
             ffn_out_->tensor_set_device_type(dev);
-            attn_norm_=std::make_shared<RMSNormLayer>(attn_norm_w);
+            attn_norm_=std::make_shared<RMSNormLayer>(attn_norm_w, config_.norm_eps);
             attentionLayer_=std::make_shared<AttentionLayer>(allocator,config_,wq,wk,wv,wo);
-            ffn_norm_=std::make_shared<RMSNormLayer>(ffn_norm_w);
+            ffn_norm_=std::make_shared<RMSNormLayer>(ffn_norm_w, config_.norm_eps);
             swigluLayer_=std::make_shared<SwigluLayer>(allocator,config_,w_gate,w_up,w_down);
         }
 

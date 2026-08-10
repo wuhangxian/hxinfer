@@ -33,6 +33,7 @@ namespace hxinfer{
         int kv_head;
         int vocab_size;
         int seq_len;
+        float norm_eps = 1e-5f;
 
         // YaRN RoPE scaling parameters
         float rope_factor       = 1.0f;   // scaling factor (e.g. 32.0 for YaRN-128k)

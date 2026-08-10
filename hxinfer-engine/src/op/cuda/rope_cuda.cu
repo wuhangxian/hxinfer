@@ -20,11 +20,11 @@ __global__ void rope_kernel_cuda(float* data, int num_heads, int head_dim, int s
         float angle = step * scale;
         float cos_val = cosf(angle);
         float sin_val = sinf(angle);
-        float* ptr = data + head_idx * head_dim + d;
-        float v0 = ptr[0];
-        float v1 = ptr[1];
-        ptr[0] = v0 * cos_val - v1 * sin_val;
-        ptr[1] = v0 * sin_val + v1 * cos_val;
+        float* head_ptr = data + head_idx * head_dim;
+        float v0 = head_ptr[pair_idx];
+        float v1 = head_ptr[pair_idx + half_head_dim];
+        head_ptr[pair_idx] = v0 * cos_val - v1 * sin_val;
+        head_ptr[pair_idx + half_head_dim] = v1 * cos_val + v0 * sin_val;
     }
 }
 
@@ -41,11 +41,11 @@ __global__ void rope_kernel_cuda_fp16(__half* data, int num_heads, int head_dim,
         float angle = step * scale;
         float cos_val = cosf(angle);
         float sin_val = sinf(angle);
-        __half* ptr = data + head_idx * head_dim + d;
-        float v0 = __half2float(ptr[0]);
-        float v1 = __half2float(ptr[1]);
-        ptr[0] = __float2half(v0 * cos_val - v1 * sin_val);
-        ptr[1] = __float2half(v0 * sin_val + v1 * cos_val);
+        __half* head_ptr = data + head_idx * head_dim;
+        float v0 = __half2float(head_ptr[pair_idx]);
+        float v1 = __half2float(head_ptr[pair_idx + half_head_dim]);
+        head_ptr[pair_idx] = __float2half(v0 * cos_val - v1 * sin_val);
+        head_ptr[pair_idx + half_head_dim] = __float2half(v1 * cos_val + v0 * sin_val);
     }
 }
 

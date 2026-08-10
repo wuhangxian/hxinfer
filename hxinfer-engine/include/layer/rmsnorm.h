@@ -6,10 +6,12 @@ namespace hxinfer{
     class RMSNormLayer:public Layer{
     private:
         std::shared_ptr<Tensor> weight_;
+        float eps_;
     public:
-        RMSNormLayer(std::shared_ptr<Tensor> weight): Layer("RMSNorm"),weight_(weight){};
+        RMSNormLayer(std::shared_ptr<Tensor> weight, float eps=1e-5f):
+            Layer("RMSNorm"),weight_(weight),eps_(eps){};
         void forward(std::shared_ptr<Tensor>& input,std::shared_ptr<Tensor>& output) override{
-            rmsnorm_tensor(input,weight_,output);
+            rmsnorm_tensor(input,weight_,output,eps_);
         }
     };
 }

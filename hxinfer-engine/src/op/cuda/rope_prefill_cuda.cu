@@ -25,11 +25,11 @@ __global__ void rope_kernel_single_fp16(
         float cos_val = cosf(angle);
         float sin_val = sinf(angle);
 
-        __half* ptr = data + head_idx * head_dim + d;
-        float v0 = __half2float(ptr[0]);
-        float v1 = __half2float(ptr[1]);
-        ptr[0] = __float2half(v0 * cos_val - v1 * sin_val);
-        ptr[1] = __float2half(v0 * sin_val + v1 * cos_val);
+        __half* head_ptr = data + head_idx * head_dim;
+        float v0 = __half2float(head_ptr[pair_idx]);
+        float v1 = __half2float(head_ptr[pair_idx + half_head_dim]);
+        head_ptr[pair_idx] = __float2half(v0 * cos_val - v1 * sin_val);
+        head_ptr[pair_idx + half_head_dim] = __float2half(v1 * cos_val + v0 * sin_val);
     }
 }
 

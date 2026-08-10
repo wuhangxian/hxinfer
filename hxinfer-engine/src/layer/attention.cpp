@@ -6,8 +6,8 @@
 
 namespace hxinfer{
 
-    extern "C" void add_bias_cuda_fp16(__half* data, const __half* bias, int n);
-    extern "C" void add_bias_cuda_fp32(float* data, const float* bias, int n);
+    extern "C" void add_bias_broadcast_fp16(__half* data, const __half* bias, int total, int width);
+    extern "C" void add_bias_broadcast_fp32(float* data, const float* bias, int total, int width);
     void attention_prefill_cuda(
         const std::shared_ptr<Tensor>& Q,
         const std::shared_ptr<Tensor>& K,
@@ -23,48 +23,30 @@ namespace hxinfer{
         int head_dim=dim/head;
 
         if(input->tensor_device_type()==DeviceType::kDeviceCUDA){
+            int kv_dim = config_.kv_head * head_dim;
+            curr_q_->tensor_reshape({1, dim});
+            curr_k_->tensor_reshape({1, kv_dim});
+            curr_v_->tensor_reshape({1, kv_dim});
+            after_qktv_->tensor_reshape({1, dim});
+
             matmul_qkv_cuda(input, wq_, wk_, wv_, curr_q_, curr_k_, curr_v_);
-            {
-                extern void clamp_fp16(__half*, int);
-                if(curr_q_->tensor_data_type() == DataType::kDataTypeFP16){
-                    clamp_fp16(curr_q_->tensor_data_ptr<__half>(), (int)curr_q_->tensor_total_elements());
-                    clamp_fp16(curr_k_->tensor_data_ptr<__half>(), (int)curr_k_->tensor_total_elements());
-                    clamp_fp16(curr_v_->tensor_data_ptr<__half>(), (int)curr_v_->tensor_total_elements());
-                }
-            }
 
             if(has_bias_){
-                int qk_size = (int)curr_q_->tensor_total_elements();
+                int q_size = (int)curr_q_->tensor_total_elements();
+                int k_size = (int)curr_k_->tensor_total_elements();
                 int v_size = (int)curr_v_->tensor_total_elements();
                 if(curr_q_->tensor_data_type() == DataType::kDataTypeFP16){
-                    add_bias_cuda_fp16(curr_q_->tensor_data_ptr<__half>(), bq_->tensor_data_ptr<__half>(), qk_size);
-                    add_bias_cuda_fp16(curr_k_->tensor_data_ptr<__half>(), bk_->tensor_data_ptr<__half>(), qk_size);
-                    add_bias_cuda_fp16(curr_v_->tensor_data_ptr<__half>(), bv_->tensor_data_ptr<__half>(), v_size);
+                    add_bias_broadcast_fp16(curr_q_->tensor_data_ptr<__half>(), bq_->tensor_data_ptr<__half>(), q_size, dim);
+                    add_bias_broadcast_fp16(curr_k_->tensor_data_ptr<__half>(), bk_->tensor_data_ptr<__half>(), k_size, kv_dim);
+                    add_bias_broadcast_fp16(curr_v_->tensor_data_ptr<__half>(), bv_->tensor_data_ptr<__half>(), v_size, kv_dim);
                 } else {
-                    add_bias_cuda_fp32(curr_q_->tensor_data_ptr<float>(), bq_->tensor_data_ptr<float>(), qk_size);
-                    add_bias_cuda_fp32(curr_k_->tensor_data_ptr<float>(), bk_->tensor_data_ptr<float>(), qk_size);
-                    add_bias_cuda_fp32(curr_v_->tensor_data_ptr<float>(), bv_->tensor_data_ptr<float>(), v_size);
+                    add_bias_broadcast_fp32(curr_q_->tensor_data_ptr<float>(), bq_->tensor_data_ptr<float>(), q_size, dim);
+                    add_bias_broadcast_fp32(curr_k_->tensor_data_ptr<float>(), bk_->tensor_data_ptr<float>(), k_size, kv_dim);
+                    add_bias_broadcast_fp32(curr_v_->tensor_data_ptr<float>(), bv_->tensor_data_ptr<float>(), v_size, kv_dim);
                 }
             }
 
-            // Reshape QKV buffers back to [1, dim/kv_dim] for decode
-            {
-                int dim_d = config_.dim;
-                int head_dim_d = dim_d / config_.head;
-                int kv_dim_d = config_.kv_head * head_dim_d;
-                curr_q_->tensor_reshape({1, dim_d});
-                curr_k_->tensor_reshape({1, kv_dim_d});
-                curr_v_->tensor_reshape({1, kv_dim_d});
-                after_qktv_->tensor_reshape({1, dim_d});
-            }
             rope_tensor(curr_q_, curr_k_, config_, pos, config_.rope_theta);
-            {
-                extern void clamp_fp16(__half*, int);
-                if(curr_q_->tensor_data_type() == DataType::kDataTypeFP16){
-                    clamp_fp16(curr_q_->tensor_data_ptr<__half>(), (int)curr_q_->tensor_total_elements());
-                    clamp_fp16(curr_k_->tensor_data_ptr<__half>(), (int)curr_k_->tensor_total_elements());
-                }
-            }
             attention_score_cuda(curr_q_, curr_k_, curr_v_, k_cache_, v_cache_, after_qktv_, config_, pos);
         } else {
             q_proj_->forward(input,curr_q_);
@@ -135,27 +117,20 @@ namespace hxinfer{
 
         // QKV projection (cuBLAS handles M=seq_len automatically)
         matmul_qkv_cuda(input, wq_, wk_, wv_, curr_q_, curr_k_, curr_v_);
-        {
-            extern void clamp_fp16(__half*, int);
-            if(curr_q_->tensor_data_type() == DataType::kDataTypeFP16){
-                clamp_fp16(curr_q_->tensor_data_ptr<__half>(), (int)curr_q_->tensor_total_elements());
-                clamp_fp16(curr_k_->tensor_data_ptr<__half>(), (int)curr_k_->tensor_total_elements());
-                clamp_fp16(curr_v_->tensor_data_ptr<__half>(), (int)curr_v_->tensor_total_elements());
-            }
-        }
 
         // Add bias if present (broadcast: bias [dim] -> [seq_len, dim])
         if(has_bias_){
-            int qk_size = (int)curr_q_->tensor_total_elements();
+            int q_size = (int)curr_q_->tensor_total_elements();
+            int k_size = (int)curr_k_->tensor_total_elements();
             int v_size = (int)curr_v_->tensor_total_elements();
             if(curr_q_->tensor_data_type() == DataType::kDataTypeFP16){
-                add_bias_cuda_fp16(curr_q_->tensor_data_ptr<__half>(), bq_->tensor_data_ptr<__half>(), qk_size);
-                add_bias_cuda_fp16(curr_k_->tensor_data_ptr<__half>(), bk_->tensor_data_ptr<__half>(), qk_size);
-                add_bias_cuda_fp16(curr_v_->tensor_data_ptr<__half>(), bv_->tensor_data_ptr<__half>(), v_size);
+                add_bias_broadcast_fp16(curr_q_->tensor_data_ptr<__half>(), bq_->tensor_data_ptr<__half>(), q_size, dim);
+                add_bias_broadcast_fp16(curr_k_->tensor_data_ptr<__half>(), bk_->tensor_data_ptr<__half>(), k_size, kv_dim);
+                add_bias_broadcast_fp16(curr_v_->tensor_data_ptr<__half>(), bv_->tensor_data_ptr<__half>(), v_size, kv_dim);
             } else {
-                add_bias_cuda_fp32(curr_q_->tensor_data_ptr<float>(), bq_->tensor_data_ptr<float>(), qk_size);
-                add_bias_cuda_fp32(curr_k_->tensor_data_ptr<float>(), bk_->tensor_data_ptr<float>(), qk_size);
-                add_bias_cuda_fp32(curr_v_->tensor_data_ptr<float>(), bv_->tensor_data_ptr<float>(), v_size);
+                add_bias_broadcast_fp32(curr_q_->tensor_data_ptr<float>(), bq_->tensor_data_ptr<float>(), q_size, dim);
+                add_bias_broadcast_fp32(curr_k_->tensor_data_ptr<float>(), bk_->tensor_data_ptr<float>(), k_size, kv_dim);
+                add_bias_broadcast_fp32(curr_v_->tensor_data_ptr<float>(), bv_->tensor_data_ptr<float>(), v_size, kv_dim);
             }
         }
 
