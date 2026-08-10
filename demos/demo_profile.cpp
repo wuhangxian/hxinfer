@@ -8,7 +8,7 @@
 #include "base/config.h"
 #include "tensor/tensor.h"
 #include "op/math_ops.h"
-#include "model/llama_model.h"
+#include "llama_weight_loader.h"
 #include "loader/llama7b_loader.h"
 
 using namespace hxinfer;
