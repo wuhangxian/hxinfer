@@ -39,8 +39,7 @@ int main(int argc, char** argv) {
     input_gpu->tensor_set_device_type(DeviceType::kDeviceCUDA);
     logits->tensor_set_device_type(DeviceType::kDeviceCUDA);
 
-    std::vector<int> tokens = tokenizer.encode(PROMPT);
-    tokens.insert(tokens.begin(), tokenizer.bos_id());
+   std::vector<int> tokens = tokenizer.encode(PROMPT);
 
     std::cout << "\nPrompt: \"" << PROMPT << "\"" << std::endl;
     std::cout << "Tokens: " << tokens.size() << std::endl;
