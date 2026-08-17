@@ -24,14 +24,14 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -Wall -Wextra -pthread")
 set(CMAKE_INTERPROCEDURAL_OPTIMIZATION FALSE)
 
 include_directories(
-    ${CMAKE_SOURCE_DIR}/engine/include
+    ${CMAKE_SOURCE_DIR}/hxinfer-engine/include
     ${CMAKE_SOURCE_DIR}/model_loaders/include
     ${CMAKE_SOURCE_DIR}/tokenizer/include
 )
 
 # ==================== Engine Core Library ====================
-file(GLOB_RECURSE ENGINE_SRC "engine/src/*.cpp")
-file(GLOB_RECURSE ENGINE_CU  "engine/src/*.cu")
+file(GLOB_RECURSE ENGINE_SRC "hxinfer-engine/src/*.cpp")
+file(GLOB_RECURSE ENGINE_CU  "hxinfer-engine/src/*.cu")
 
 add_library(hxinfer_core STATIC
     ${ENGINE_SRC}
