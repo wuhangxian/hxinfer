@@ -13,7 +13,7 @@
 #include "base/config.h"
 #include "tensor/tensor.h"
 #include "op/math_ops.h"
-#include "qwen_weight_loader.h"
+#include "dense_model_loader.h"
 #include "qwen_tokenizer.h"
 
 using namespace hxinfer;
@@ -40,7 +40,7 @@ int main() {
     auto cpu_alloc  = std::make_shared<CPUAllocator>();
     auto cuda_alloc = std::make_shared<CUDAAllocator>();
     ModelConfig config;
-    auto model = QwenWeightLoader::load(DATA_DIR, config, cpu_alloc, cuda_alloc);
+    auto model = DenseModelLoader::load(DATA_DIR, config, cpu_alloc, cuda_alloc, ModelType::Qwen2);
 
     std::cout << ">>> Loading tokenizer...\n";
     QwenTokenizer tokenizer(TOKEN_PATH);

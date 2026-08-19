@@ -1,4 +1,4 @@
-#include "qwen_weight_loader.h"
+#include "dense_model_loader.h"
 #include "layer/transformer.h"
 #include "layer/embedding.h"
 #include "layer/rmsnorm.h"
@@ -17,12 +17,14 @@ static std::string weight_name(int layer, const std::string& suffix) {
     return "model.layers." + std::to_string(layer) + "." + suffix;
 }
 
-std::shared_ptr<Qwen2Model> QwenWeightLoader::load(
+std::shared_ptr<CausalLMModel> DenseModelLoader::load(
     const std::string& model_dir,
     ModelConfig& out_config,
     const std::shared_ptr<CPUAllocator>& /*cpu_alloc*/,
-    const std::shared_ptr<CUDAAllocator>& cuda_alloc)
+    const std::shared_ptr<CUDAAllocator>& cuda_alloc,
+    ModelType type)
 {
+    // ---- 1. Parse config.json ----
     std::string config_path = model_dir + "/config.json";
     std::ifstream cf(config_path);
     if (!cf) throw std::runtime_error("config.json not found: " + config_path);
@@ -49,7 +51,8 @@ std::shared_ptr<Qwen2Model> QwenWeightLoader::load(
         }
     }
 
-    std::cout << ">>> [Loader] Qwen2 Model config\n"
+    const char* model_name = (type == ModelType::Qwen2) ? "Qwen2" : "LLaMA";
+    std::cout << ">>> [Loader] " << model_name << " Model config\n"
               << "    dim=" << out_config.dim
               << "  hidden_dim=" << out_config.hidden_dim
               << "  layers=" << out_config.layer
@@ -57,8 +60,13 @@ std::shared_ptr<Qwen2Model> QwenWeightLoader::load(
               << "  kv_heads=" << out_config.kv_head
               << "  vocab=" << out_config.vocab_size
               << "  seq_len=" << out_config.seq_len
-              << "  rope_theta=" << out_config.rope_theta << "\n";
+              << "  rope_theta=" << out_config.rope_theta;
+    if (out_config.rope_use_yarn) {
+        std::cout << "\n    YaRN: factor=" << out_config.rope_factor;
+    }
+    std::cout << "\n";
 
+    // ---- 2. Load safetensors ----
     SafetensorsMultiReader reader;
     if (!reader.load_directory(model_dir)) {
         throw std::runtime_error("No .safetensors files found in: " + model_dir);
@@ -67,8 +75,10 @@ std::shared_ptr<Qwen2Model> QwenWeightLoader::load(
 
     auto& c = out_config;
 
+    // ---- 3. Embedding ----
     auto embed_w = reader.get_tensor_gpu("model.embed_tokens.weight", cuda_alloc, c.weight_dtype);
 
+    // ---- 4. Transformer layers ----
     std::vector<std::shared_ptr<TransformerLayer>> blocks;
     blocks.reserve(c.layer);
 
@@ -94,24 +104,34 @@ std::shared_ptr<Qwen2Model> QwenWeightLoader::load(
         auto w_down = reader.get_tensor_gpu(
             weight_name(i, "mlp.down_proj.weight"), cuda_alloc, c.weight_dtype);
 
-        // Qwen2 has Q/K/V bias
-        auto bq = reader.get_tensor_gpu(
-            weight_name(i, "self_attn.q_proj.bias"), cuda_alloc, c.bias_dtype);
-        auto bk = reader.get_tensor_gpu(
-            weight_name(i, "self_attn.k_proj.bias"), cuda_alloc, c.bias_dtype);
-        auto bv = reader.get_tensor_gpu(
-            weight_name(i, "self_attn.v_proj.bias"), cuda_alloc, c.bias_dtype);
+        // QKV bias: LLaMA has no bias, Qwen2 has bias. Check dynamically.
+        bool has_bias = reader.has_tensor(weight_name(i, "self_attn.q_proj.bias"));
+        if (has_bias) {
+            auto bq = reader.get_tensor_gpu(
+                weight_name(i, "self_attn.q_proj.bias"), cuda_alloc, c.bias_dtype);
+            auto bk = reader.get_tensor_gpu(
+                weight_name(i, "self_attn.k_proj.bias"), cuda_alloc, c.bias_dtype);
+            auto bv = reader.get_tensor_gpu(
+                weight_name(i, "self_attn.v_proj.bias"), cuda_alloc, c.bias_dtype);
 
-        blocks.push_back(std::make_shared<TransformerLayer>(
-            cuda_alloc, c,
-            attn_norm_w, wq, wk, wv, wo,
-            ffn_norm_w, w_gate, w_up, w_down,
-            true, bq, bk, bv));
+            blocks.push_back(std::make_shared<TransformerLayer>(
+                cuda_alloc, c,
+                attn_norm_w, wq, wk, wv, wo,
+                ffn_norm_w, w_gate, w_up, w_down,
+                true, bq, bk, bv));
+        } else {
+            blocks.push_back(std::make_shared<TransformerLayer>(
+                cuda_alloc, c,
+                attn_norm_w, wq, wk, wv, wo,
+                ffn_norm_w, w_gate, w_up, w_down,
+                true));
+        }
 
-        if ((i + 1) % 7 == 0)
+        if ((i + 1) % 8 == 0)
             std::cout << "    Loaded " << i + 1 << "/" << c.layer << " layers\n";
     }
 
+    // ---- 5. Final norm + LM head ----
     auto final_norm_w = reader.get_tensor_gpu("model.norm.weight", cuda_alloc, c.norm_weight_dtype);
 
     std::shared_ptr<Tensor> lm_head_w;
@@ -126,10 +146,12 @@ std::shared_ptr<Qwen2Model> QwenWeightLoader::load(
     auto final_norm = std::make_shared<RMSNormLayer>(final_norm_w);
     auto lm_head = std::make_shared<LinearLayer>(lm_head_w);
 
-    auto model = std::make_shared<Qwen2Model>(
+    // LlamaModel and Qwen2Model are identical (just a name tag).
+    // Return the CausalLMModel base class directly.
+    auto model = std::make_shared<CausalLMModel>(
         cuda_alloc, embedding_layer, blocks, final_norm, lm_head, out_config);
 
-    std::cout << ">>> [Loader] Qwen2 Model loaded!\n";
+    std::cout << ">>> [Loader] " << model_name << " Model loaded!\n";
     return model;
 }
 

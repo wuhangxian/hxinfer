@@ -9,8 +9,8 @@
 #include "base/config.h"
 #include "tensor/tensor.h"
 #include "op/math_ops.h"
-#include "qwen_weight_loader.h"
-#include "llama_weight_loader.h"
+#include "dense_model_loader.h"
+#include "dense_model_loader.h"
 #include "qwen_tokenizer.h"
 
 using namespace hxinfer;
@@ -30,7 +30,7 @@ int main(int argc, char** argv){
 
     std::cout << "\n>>> Loading model from safetensors..." << std::endl;
     ModelConfig config;
-    auto model = QwenWeightLoader::load(DATA_DIR, config, cpu_alloc, cuda_alloc);
+    auto model = DenseModelLoader::load(DATA_DIR, config, cpu_alloc, cuda_alloc, ModelType::Qwen2);
 
     std::cout << ">>> Loading tokenizer..." << std::endl;
     QwenTokenizer tokenizer(TOKEN_PATH);

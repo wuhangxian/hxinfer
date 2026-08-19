@@ -10,8 +10,8 @@
 #include "base/config.h"
 #include "tensor/tensor.h"
 #include "op/math_ops.h"
-#include "llama_weight_loader.h"
-#include "llama_weight_loader.h"
+#include "dense_model_loader.h"
+#include "dense_model_loader.h"
 #include "llama7b_tokenizer.h"
 
 using namespace hxinfer;
@@ -31,7 +31,7 @@ int main(int argc, char** argv){
 
     std::cout << "\n>>> Loading model from safetensors..." << std::endl;
     ModelConfig config;
-    auto model = LlamaWeightLoader::load(DATA_DIR, config, cpu_alloc, cuda_alloc);
+    auto model = DenseModelLoader::load(DATA_DIR, config, cpu_alloc, cuda_alloc, ModelType::LLaMA);
 
     std::cout << ">>> Loading tokenizer..." << std::endl;
     Llama7BTokenizer tokenizer(TOKEN_PATH);

@@ -8,8 +8,7 @@
 #include "base/config.h"
 #include "tensor/tensor.h"
 #include "op/math_ops.h"
-#include "llama_weight_loader.h"
-#include "loader/llama7b_loader.h"
+#include "dense_model_loader.h"
 
 using namespace hxinfer;
 
@@ -21,7 +20,7 @@ int main(){
 
     std::cout << ">>> 加载 LLaMA-2 7B 权重...\n";
     ModelConfig config;
-    auto model = Llama7BLoader::load(DATA_DIR, config, cpu_alloc, cuda_alloc);
+    auto model = DenseModelLoader::load(DATA_DIR, config, cpu_alloc, cuda_alloc, ModelType::LLaMA);
 
     auto input_cpu = std::make_shared<Tensor>(cpu_alloc, std::vector<int>{1}, DataType::kDataTypeFP32);
     auto input_gpu = std::make_shared<Tensor>(cuda_alloc, std::vector<int>{1}, DataType::kDataTypeFP32);
