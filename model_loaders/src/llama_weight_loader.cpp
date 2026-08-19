@@ -71,41 +71,41 @@ std::shared_ptr<LlamaModel> LlamaWeightLoader::load(
 
     auto& c = out_config;
 
-    auto embed_w = reader.get_tensor_gpu("model.embed_tokens.weight", cuda_alloc, DataType::kDataTypeFP16);
+    auto embed_w = reader.get_tensor_gpu("model.embed_tokens.weight", cuda_alloc, c.weight_dtype);
 
     std::vector<std::shared_ptr<TransformerLayer>> blocks;
     blocks.reserve(c.layer);
 
     for (int i = 0; i < c.layer; i++) {
         auto attn_norm_w = reader.get_tensor_gpu(
-            weight_name(i, "input_layernorm.weight"), cuda_alloc, DataType::kDataTypeFP32);
+            weight_name(i, "input_layernorm.weight"), cuda_alloc, c.norm_weight_dtype);
         auto ffn_norm_w = reader.get_tensor_gpu(
-            weight_name(i, "post_attention_layernorm.weight"), cuda_alloc, DataType::kDataTypeFP32);
+            weight_name(i, "post_attention_layernorm.weight"), cuda_alloc, c.norm_weight_dtype);
 
         auto wq = reader.get_tensor_gpu(
-            weight_name(i, "self_attn.q_proj.weight"), cuda_alloc, DataType::kDataTypeFP16);
+            weight_name(i, "self_attn.q_proj.weight"), cuda_alloc, c.weight_dtype);
         auto wk = reader.get_tensor_gpu(
-            weight_name(i, "self_attn.k_proj.weight"), cuda_alloc, DataType::kDataTypeFP16);
+            weight_name(i, "self_attn.k_proj.weight"), cuda_alloc, c.weight_dtype);
         auto wv = reader.get_tensor_gpu(
-            weight_name(i, "self_attn.v_proj.weight"), cuda_alloc, DataType::kDataTypeFP16);
+            weight_name(i, "self_attn.v_proj.weight"), cuda_alloc, c.weight_dtype);
         auto wo = reader.get_tensor_gpu(
-            weight_name(i, "self_attn.o_proj.weight"), cuda_alloc, DataType::kDataTypeFP16);
+            weight_name(i, "self_attn.o_proj.weight"), cuda_alloc, c.weight_dtype);
 
         auto w_gate = reader.get_tensor_gpu(
-            weight_name(i, "mlp.gate_proj.weight"), cuda_alloc, DataType::kDataTypeFP16);
+            weight_name(i, "mlp.gate_proj.weight"), cuda_alloc, c.weight_dtype);
         auto w_up = reader.get_tensor_gpu(
-            weight_name(i, "mlp.up_proj.weight"), cuda_alloc, DataType::kDataTypeFP16);
+            weight_name(i, "mlp.up_proj.weight"), cuda_alloc, c.weight_dtype);
         auto w_down = reader.get_tensor_gpu(
-            weight_name(i, "mlp.down_proj.weight"), cuda_alloc, DataType::kDataTypeFP16);
+            weight_name(i, "mlp.down_proj.weight"), cuda_alloc, c.weight_dtype);
 
         bool has_bias = reader.has_tensor(weight_name(i, "self_attn.q_proj.bias"));
         if (has_bias) {
             auto bq = reader.get_tensor_gpu(
-                weight_name(i, "self_attn.q_proj.bias"), cuda_alloc, DataType::kDataTypeFP16);
+                weight_name(i, "self_attn.q_proj.bias"), cuda_alloc, c.bias_dtype);
             auto bk = reader.get_tensor_gpu(
-                weight_name(i, "self_attn.k_proj.bias"), cuda_alloc, DataType::kDataTypeFP16);
+                weight_name(i, "self_attn.k_proj.bias"), cuda_alloc, c.bias_dtype);
             auto bv = reader.get_tensor_gpu(
-                weight_name(i, "self_attn.v_proj.bias"), cuda_alloc, DataType::kDataTypeFP16);
+                weight_name(i, "self_attn.v_proj.bias"), cuda_alloc, c.bias_dtype);
 
             blocks.push_back(std::make_shared<TransformerLayer>(
                 cuda_alloc, c,
@@ -124,11 +124,11 @@ std::shared_ptr<LlamaModel> LlamaWeightLoader::load(
             std::cout << "    Loaded " << i + 1 << "/" << c.layer << " layers\n";
     }
 
-    auto final_norm_w = reader.get_tensor_gpu("model.norm.weight", cuda_alloc, DataType::kDataTypeFP32);
+    auto final_norm_w = reader.get_tensor_gpu("model.norm.weight", cuda_alloc, c.norm_weight_dtype);
 
     std::shared_ptr<Tensor> lm_head_w;
     if (reader.has_tensor("lm_head.weight")) {
-        lm_head_w = reader.get_tensor_gpu("lm_head.weight", cuda_alloc, DataType::kDataTypeFP16);
+        lm_head_w = reader.get_tensor_gpu("lm_head.weight", cuda_alloc, c.weight_dtype);
     } else {
         std::cout << ">>> [Loader] lm_head not found, reusing embed_tokens.weight\n";
         lm_head_w = embed_w;

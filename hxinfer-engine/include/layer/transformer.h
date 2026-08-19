@@ -28,7 +28,7 @@ namespace hxinfer{
                          bool enable_fused): Layer("Transformer"),
                          config_(modelConfig){
             int dim=config_.dim;
-            DataType act_dtype = DataType::kDataTypeFP32;
+            DataType act_dtype = modelConfig.activation_dtype;  // from ModelConfig
             std::vector<int> buffer_shapes={1,dim};
             norm_out_=std::make_shared<Tensor>(allocator,buffer_shapes,act_dtype);
             attn_out_=std::make_shared<Tensor>(allocator,buffer_shapes,act_dtype);
@@ -55,7 +55,7 @@ namespace hxinfer{
                          std::shared_ptr<Tensor>& bq,std::shared_ptr<Tensor>& bk,std::shared_ptr<Tensor>& bv): Layer("Transformer"),
                          config_(modelConfig){
             int dim=config_.dim;
-            DataType act_dtype = DataType::kDataTypeFP32;
+            DataType act_dtype = modelConfig.activation_dtype;  // from ModelConfig
             std::vector<int> buffer_shapes={1,dim};
             norm_out_=std::make_shared<Tensor>(allocator,buffer_shapes,act_dtype);
             attn_out_=std::make_shared<Tensor>(allocator,buffer_shapes,act_dtype);
@@ -81,10 +81,10 @@ namespace hxinfer{
                          config_(modelConfig){
             int dim=config_.dim;
             std::vector<int> buffer_shapes={1,dim};
-            norm_out_=std::make_shared<Tensor>(allocator,buffer_shapes,DataType::kDataTypeFP32);
-            attn_out_=std::make_shared<Tensor>(allocator,buffer_shapes,DataType::kDataTypeFP32);
-            ffn_out_=std::make_shared<Tensor>(allocator,buffer_shapes,DataType::kDataTypeFP32);
-            residual_=std::make_shared<Tensor>(allocator,buffer_shapes,DataType::kDataTypeFP32);
+            norm_out_=std::make_shared<Tensor>(allocator,buffer_shapes,modelConfig.activation_dtype);
+            attn_out_=std::make_shared<Tensor>(allocator,buffer_shapes,modelConfig.activation_dtype);
+            ffn_out_=std::make_shared<Tensor>(allocator,buffer_shapes,modelConfig.activation_dtype);
+            residual_=std::make_shared<Tensor>(allocator,buffer_shapes,modelConfig.activation_dtype);
             DeviceType dev=allocator->device_type();
             norm_out_->tensor_set_device_type(dev);
             attn_out_->tensor_set_device_type(dev);

@@ -6,7 +6,7 @@ namespace hxinfer{
     std::shared_ptr<Tensor>& w_up,std::shared_ptr<Tensor>& w_down): Layer("Swiglu"),
     w_gate_(w_gate),w_up_(w_up),w_down_(w_down), config_(config){
         // 中间激活值类型跟权重走
-        DataType act_dtype = DataType::kDataTypeFP32;
+        DataType act_dtype = config_.activation_dtype;  // from ModelConfig
         int max_seq_len=config_.seq_len;
         int hidden_dim=config_.hidden_dim;
         std::vector<int> max_shapes={max_seq_len,hidden_dim};

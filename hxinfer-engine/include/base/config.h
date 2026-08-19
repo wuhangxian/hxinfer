@@ -41,6 +41,13 @@ namespace hxinfer{
         float rope_theta       = 10000.0f; // RoPE base frequency
         int   rope_orig_max_pos = 4096;   // original_max_position_embeddings
         bool  rope_use_yarn     = false;   // true when type=="yarn"
+
+        // Precision config (centralized — all layers read from here)
+        DataType weight_dtype      = DataType::kDataTypeFP16;  // model weights
+        DataType activation_dtype  = DataType::kDataTypeFP32;  // hidden states, QKV, KV cache
+        DataType norm_weight_dtype = DataType::kDataTypeFP32;  // RMSNorm weights (small, FP32 for precision)
+        DataType bias_dtype        = DataType::kDataTypeFP32;  // QKV bias (must match activation_dtype)
+        DataType logits_dtype      = DataType::kDataTypeFP32;  // final logits output
     };
 }
 

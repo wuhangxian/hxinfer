@@ -35,9 +35,9 @@ std::shared_ptr<Qwen2Model> QwenWeightLoader::load(
     out_config.kv_head    = cfg.value("num_key_value_heads", out_config.head);
     out_config.vocab_size = cfg["vocab_size"].get<int>();
     out_config.seq_len    = 4096;
-    out_config.rope_theta = cfg.value("rope_theta", 1000000.0f);
+    out_config.rope_theta = cfg.value("rope_theta", 10000.0f);
 
-    if (cfg.contains("rope_scaling")) {
+    if (cfg.contains("rope_scaling") && !cfg["rope_scaling"].is_null()) {
         auto& rs = cfg["rope_scaling"];
         std::string rs_type = rs.value("type", rs.value("rope_type", ""));
         if (rs_type == "yarn") {
@@ -67,40 +67,40 @@ std::shared_ptr<Qwen2Model> QwenWeightLoader::load(
 
     auto& c = out_config;
 
-    auto embed_w = reader.get_tensor_gpu("model.embed_tokens.weight", cuda_alloc, DataType::kDataTypeFP16);
+    auto embed_w = reader.get_tensor_gpu("model.embed_tokens.weight", cuda_alloc, c.weight_dtype);
 
     std::vector<std::shared_ptr<TransformerLayer>> blocks;
     blocks.reserve(c.layer);
 
     for (int i = 0; i < c.layer; i++) {
         auto attn_norm_w = reader.get_tensor_gpu(
-            weight_name(i, "input_layernorm.weight"), cuda_alloc, DataType::kDataTypeFP32);
+            weight_name(i, "input_layernorm.weight"), cuda_alloc, c.norm_weight_dtype);
         auto ffn_norm_w = reader.get_tensor_gpu(
-            weight_name(i, "post_attention_layernorm.weight"), cuda_alloc, DataType::kDataTypeFP32);
+            weight_name(i, "post_attention_layernorm.weight"), cuda_alloc, c.norm_weight_dtype);
 
         auto wq = reader.get_tensor_gpu(
-            weight_name(i, "self_attn.q_proj.weight"), cuda_alloc, DataType::kDataTypeFP16);
+            weight_name(i, "self_attn.q_proj.weight"), cuda_alloc, c.weight_dtype);
         auto wk = reader.get_tensor_gpu(
-            weight_name(i, "self_attn.k_proj.weight"), cuda_alloc, DataType::kDataTypeFP16);
+            weight_name(i, "self_attn.k_proj.weight"), cuda_alloc, c.weight_dtype);
         auto wv = reader.get_tensor_gpu(
-            weight_name(i, "self_attn.v_proj.weight"), cuda_alloc, DataType::kDataTypeFP16);
+            weight_name(i, "self_attn.v_proj.weight"), cuda_alloc, c.weight_dtype);
         auto wo = reader.get_tensor_gpu(
-            weight_name(i, "self_attn.o_proj.weight"), cuda_alloc, DataType::kDataTypeFP16);
+            weight_name(i, "self_attn.o_proj.weight"), cuda_alloc, c.weight_dtype);
 
         auto w_gate = reader.get_tensor_gpu(
-            weight_name(i, "mlp.gate_proj.weight"), cuda_alloc, DataType::kDataTypeFP16);
+            weight_name(i, "mlp.gate_proj.weight"), cuda_alloc, c.weight_dtype);
         auto w_up = reader.get_tensor_gpu(
-            weight_name(i, "mlp.up_proj.weight"), cuda_alloc, DataType::kDataTypeFP16);
+            weight_name(i, "mlp.up_proj.weight"), cuda_alloc, c.weight_dtype);
         auto w_down = reader.get_tensor_gpu(
-            weight_name(i, "mlp.down_proj.weight"), cuda_alloc, DataType::kDataTypeFP16);
+            weight_name(i, "mlp.down_proj.weight"), cuda_alloc, c.weight_dtype);
 
         // Qwen2 has Q/K/V bias
         auto bq = reader.get_tensor_gpu(
-            weight_name(i, "self_attn.q_proj.bias"), cuda_alloc, DataType::kDataTypeFP32);
+            weight_name(i, "self_attn.q_proj.bias"), cuda_alloc, c.bias_dtype);
         auto bk = reader.get_tensor_gpu(
-            weight_name(i, "self_attn.k_proj.bias"), cuda_alloc, DataType::kDataTypeFP32);
+            weight_name(i, "self_attn.k_proj.bias"), cuda_alloc, c.bias_dtype);
         auto bv = reader.get_tensor_gpu(
-            weight_name(i, "self_attn.v_proj.bias"), cuda_alloc, DataType::kDataTypeFP32);
+            weight_name(i, "self_attn.v_proj.bias"), cuda_alloc, c.bias_dtype);
 
         blocks.push_back(std::make_shared<TransformerLayer>(
             cuda_alloc, c,
@@ -112,11 +112,11 @@ std::shared_ptr<Qwen2Model> QwenWeightLoader::load(
             std::cout << "    Loaded " << i + 1 << "/" << c.layer << " layers\n";
     }
 
-    auto final_norm_w = reader.get_tensor_gpu("model.norm.weight", cuda_alloc, DataType::kDataTypeFP32);
+    auto final_norm_w = reader.get_tensor_gpu("model.norm.weight", cuda_alloc, c.norm_weight_dtype);
 
     std::shared_ptr<Tensor> lm_head_w;
     if (reader.has_tensor("lm_head.weight")) {
-        lm_head_w = reader.get_tensor_gpu("lm_head.weight", cuda_alloc, DataType::kDataTypeFP16);
+        lm_head_w = reader.get_tensor_gpu("lm_head.weight", cuda_alloc, c.weight_dtype);
     } else {
         std::cout << ">>> [Loader] lm_head not found, reusing embed_tokens.weight\n";
         lm_head_w = embed_w;

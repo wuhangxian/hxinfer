@@ -36,7 +36,7 @@ void run_llama_7b() {
     std::cout << "\n>>> [3/3] Preparing I/O tensors..." << std::endl;
     auto input_cpu = std::make_shared<Tensor>(cpu_alloc, std::vector<int>{1}, DataType::kDataTypeFP32);
     auto input_gpu = std::make_shared<Tensor>(cuda_alloc, std::vector<int>{1}, DataType::kDataTypeFP32);
-    auto logits    = std::make_shared<Tensor>(cuda_alloc, std::vector<int>{1, config.vocab_size}, DataType::kDataTypeFP32);
+    auto logits    = std::make_shared<Tensor>(cuda_alloc, std::vector<int>{1, config.vocab_size}, config.logits_dtype);
     input_gpu->tensor_set_device_type(DeviceType::kDeviceCUDA);
     logits->tensor_set_device_type(DeviceType::kDeviceCUDA);
 
