@@ -291,18 +291,18 @@ MIT
 
 | 文件 | 修改内容 |
 |------|----------|
-| `engine/src/op/cuda/rope_cuda.cu` | 重写为 NeoX-style RoPE kernel |
-| `engine/src/op/cuda/rmsnorm_cuda.cu` | 新增 fused_add_rmsnorm kernel（SGLang 风格） |
-| `engine/src/op/cuda/matmul_cuda.cu` | fp32_to_fp16_kernel 加 clamp 防溢出 |
-| `engine/include/layer/attention.h` | 激活值和 KV cache 改为 FP32 |
-| `engine/include/layer/transformer.h` | 新增 residual_ buffer，使用 fused_add_rmsnorm |
-| `engine/include/layer/rmsnorm.h` | 新增 get_weight() 接口 |
-| `engine/include/model/causal_lm_model.h` | 激活值改为 FP32 |
-| `engine/include/op/math_ops.h` | 新增 fused_add_rmsnorm 声明 |
-| `engine/src/layer/transformer.cpp` | 使用 fused residual + RMSNorm 替代独立 add+rmsnorm |
-| `engine/src/layer/swiglu.cpp` | 中间激活值改为 FP32 |
-| `engine/src/op/rmsnorm_tensor.cpp` | 新增 fused_add_rmsnorm_tensor dispatch |
-| `engine/src/layer/attention.cpp` | bias add 的 size 变量修正 |
+| `hxinfer-engine/src/op/cuda/rope_cuda.cu` | 重写为 NeoX-style RoPE kernel |
+| `hxinfer-engine/src/op/cuda/rmsnorm_cuda.cu` | 新增 fused_add_rmsnorm kernel（SGLang 风格） |
+| `hxinfer-engine/src/op/cuda/matmul_cuda.cu` | fp32_to_fp16_kernel 加 clamp 防溢出 |
+| `hxinfer-engine/include/layer/attention.h` | 激活值和 KV cache 改为 FP32 |
+| `hxinfer-engine/include/layer/transformer.h` | 新增 residual_ buffer，使用 fused_add_rmsnorm |
+| `hxinfer-engine/include/layer/rmsnorm.h` | 新增 get_weight() 接口 |
+| `hxinfer-engine/include/model/causal_lm_model.h` | 激活值改为 FP32 |
+| `hxinfer-engine/include/op/math_ops.h` | 新增 fused_add_rmsnorm 声明 |
+| `hxinfer-engine/src/layer/transformer.cpp` | 使用 fused residual + RMSNorm 替代独立 add+rmsnorm |
+| `hxinfer-engine/src/layer/swiglu.cpp` | 中间激活值改为 FP32 |
+| `hxinfer-engine/src/op/rmsnorm_tensor.cpp` | 新增 fused_add_rmsnorm_tensor dispatch |
+| `hxinfer-engine/src/layer/attention.cpp` | bias add 的 size 变量修正 |
 | `model_loaders/src/llama_weight_loader.cpp` | rope_scaling null 检查 |
 | `model_loaders/src/qwen_weight_loader.cpp` | QKV bias 加载改为 FP32 |
 | `demos/` | 清理 debug 文件，学习练习移至 `demos/learning/` |
