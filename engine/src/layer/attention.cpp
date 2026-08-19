@@ -18,18 +18,18 @@ namespace hxinfer{
         if(input->tensor_device_type()==DeviceType::kDeviceCUDA){
             matmul_qkv_cuda(input, wq_, wk_, wv_, curr_q_, curr_k_, curr_v_);
 
-            if(has_bias_){
-                int qk_size = (int)curr_q_->tensor_total_elements();
-                int v_size = (int)curr_v_->tensor_total_elements();
-                if(curr_q_->tensor_data_type() == DataType::kDataTypeFP16){
-                    add_bias_cuda_fp16(curr_q_->tensor_data_ptr<__half>(), bq_->tensor_data_ptr<__half>(), qk_size);
-                    add_bias_cuda_fp16(curr_k_->tensor_data_ptr<__half>(), bk_->tensor_data_ptr<__half>(), qk_size);
-                    add_bias_cuda_fp16(curr_v_->tensor_data_ptr<__half>(), bv_->tensor_data_ptr<__half>(), v_size);
-                } else {
-                    add_bias_cuda_fp32(curr_q_->tensor_data_ptr<float>(), bq_->tensor_data_ptr<float>(), qk_size);
-                    add_bias_cuda_fp32(curr_k_->tensor_data_ptr<float>(), bk_->tensor_data_ptr<float>(), qk_size);
-                    add_bias_cuda_fp32(curr_v_->tensor_data_ptr<float>(), bv_->tensor_data_ptr<float>(), v_size);
-                }
+           if(has_bias_){
+                int q_size = (int)curr_q_->tensor_total_elements();
+                int kv_size = (int)curr_k_->tensor_total_elements();
+               if(curr_q_->tensor_data_type() == DataType::kDataTypeFP16){
+                    add_bias_cuda_fp16(curr_q_->tensor_data_ptr<__half>(), bq_->tensor_data_ptr<__half>(), q_size);
+                    add_bias_cuda_fp16(curr_k_->tensor_data_ptr<__half>(), bk_->tensor_data_ptr<__half>(), kv_size);
+                    add_bias_cuda_fp16(curr_v_->tensor_data_ptr<__half>(), bv_->tensor_data_ptr<__half>(), kv_size);
+               } else {
+                    add_bias_cuda_fp32(curr_q_->tensor_data_ptr<float>(), bq_->tensor_data_ptr<float>(), q_size);
+                    add_bias_cuda_fp32(curr_k_->tensor_data_ptr<float>(), bk_->tensor_data_ptr<float>(), kv_size);
+                    add_bias_cuda_fp32(curr_v_->tensor_data_ptr<float>(), bv_->tensor_data_ptr<float>(), kv_size);
+               }
             }
 
             rope_tensor(curr_q_, curr_k_, config_, pos, config_.rope_theta);

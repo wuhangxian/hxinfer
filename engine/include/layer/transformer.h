@@ -15,6 +15,7 @@ namespace hxinfer{
         std::shared_ptr<Tensor> norm_out_;
         std::shared_ptr<Tensor> attn_out_;
         std::shared_ptr<Tensor> ffn_out_;
+        std::shared_ptr<Tensor> residual_;  // residual buffer for fused add+norm
 
         ModelConfig config_;
 
@@ -27,16 +28,17 @@ namespace hxinfer{
                          bool enable_fused): Layer("Transformer"),
                          config_(modelConfig){
             int dim=config_.dim;
-            DataType act_dtype = (wq->tensor_data_type() == DataType::kDataTypeFP16)
-                                 ? DataType::kDataTypeFP16 : DataType::kDataTypeFP32;
+            DataType act_dtype = DataType::kDataTypeFP32;
             std::vector<int> buffer_shapes={1,dim};
             norm_out_=std::make_shared<Tensor>(allocator,buffer_shapes,act_dtype);
             attn_out_=std::make_shared<Tensor>(allocator,buffer_shapes,act_dtype);
             ffn_out_=std::make_shared<Tensor>(allocator,buffer_shapes,act_dtype);
+            residual_=std::make_shared<Tensor>(allocator,buffer_shapes,act_dtype);
             DeviceType dev=allocator->device_type();
             norm_out_->tensor_set_device_type(dev);
             attn_out_->tensor_set_device_type(dev);
             ffn_out_->tensor_set_device_type(dev);
+            residual_->tensor_set_device_type(dev);
             attn_norm_=std::make_shared<RMSNormLayer>(attn_norm_w);
             attentionLayer_=std::make_shared<AttentionLayer>(allocator,config_,wq,wk,wv,wo);
             ffn_norm_=std::make_shared<RMSNormLayer>(ffn_norm_w);
@@ -53,16 +55,17 @@ namespace hxinfer{
                          std::shared_ptr<Tensor>& bq,std::shared_ptr<Tensor>& bk,std::shared_ptr<Tensor>& bv): Layer("Transformer"),
                          config_(modelConfig){
             int dim=config_.dim;
-            DataType act_dtype = (wq->tensor_data_type() == DataType::kDataTypeFP16)
-                                 ? DataType::kDataTypeFP16 : DataType::kDataTypeFP32;
+            DataType act_dtype = DataType::kDataTypeFP32;
             std::vector<int> buffer_shapes={1,dim};
             norm_out_=std::make_shared<Tensor>(allocator,buffer_shapes,act_dtype);
             attn_out_=std::make_shared<Tensor>(allocator,buffer_shapes,act_dtype);
             ffn_out_=std::make_shared<Tensor>(allocator,buffer_shapes,act_dtype);
+            residual_=std::make_shared<Tensor>(allocator,buffer_shapes,act_dtype);
             DeviceType dev=allocator->device_type();
             norm_out_->tensor_set_device_type(dev);
             attn_out_->tensor_set_device_type(dev);
             ffn_out_->tensor_set_device_type(dev);
+            residual_->tensor_set_device_type(dev);
             attn_norm_=std::make_shared<RMSNormLayer>(attn_norm_w);
             attentionLayer_=std::make_shared<AttentionLayer>(allocator,config_,wq,wk,wv,wo,bq,bk,bv);
             ffn_norm_=std::make_shared<RMSNormLayer>(ffn_norm_w);
@@ -81,10 +84,12 @@ namespace hxinfer{
             norm_out_=std::make_shared<Tensor>(allocator,buffer_shapes,DataType::kDataTypeFP32);
             attn_out_=std::make_shared<Tensor>(allocator,buffer_shapes,DataType::kDataTypeFP32);
             ffn_out_=std::make_shared<Tensor>(allocator,buffer_shapes,DataType::kDataTypeFP32);
+            residual_=std::make_shared<Tensor>(allocator,buffer_shapes,DataType::kDataTypeFP32);
             DeviceType dev=allocator->device_type();
             norm_out_->tensor_set_device_type(dev);
             attn_out_->tensor_set_device_type(dev);
             ffn_out_->tensor_set_device_type(dev);
+            residual_->tensor_set_device_type(dev);
             attn_norm_=std::make_shared<RMSNormLayer>(attn_norm_w);
             attentionLayer_=std::make_shared<AttentionLayer>(allocator,config_,wq,wk,wv,wo);
             ffn_norm_=std::make_shared<RMSNormLayer>(ffn_norm_w);

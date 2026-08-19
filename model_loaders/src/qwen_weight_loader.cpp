@@ -96,11 +96,11 @@ std::shared_ptr<Qwen2Model> QwenWeightLoader::load(
 
         // Qwen2 has Q/K/V bias
         auto bq = reader.get_tensor_gpu(
-            weight_name(i, "self_attn.q_proj.bias"), cuda_alloc, DataType::kDataTypeFP16);
+            weight_name(i, "self_attn.q_proj.bias"), cuda_alloc, DataType::kDataTypeFP32);
         auto bk = reader.get_tensor_gpu(
-            weight_name(i, "self_attn.k_proj.bias"), cuda_alloc, DataType::kDataTypeFP16);
+            weight_name(i, "self_attn.k_proj.bias"), cuda_alloc, DataType::kDataTypeFP32);
         auto bv = reader.get_tensor_gpu(
-            weight_name(i, "self_attn.v_proj.bias"), cuda_alloc, DataType::kDataTypeFP16);
+            weight_name(i, "self_attn.v_proj.bias"), cuda_alloc, DataType::kDataTypeFP32);
 
         blocks.push_back(std::make_shared<TransformerLayer>(
             cuda_alloc, c,

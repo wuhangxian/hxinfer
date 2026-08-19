@@ -39,8 +39,7 @@ namespace hxinfer{
                 has_bias_(false){
             int dim        = config_.dim;
             int max_seq_len = config_.seq_len;
-            activation_dtype_ = (wq_->tensor_data_type() == DataType::kDataTypeFP16)
-                                ? DataType::kDataTypeFP16 : DataType::kDataTypeFP32;
+            activation_dtype_ = DataType::kDataTypeFP32;  // Force FP32
             int kv_dim = config_.kv_head * (config_.dim / config_.head);
             std::vector<int> q_shape = {1, dim};
             std::vector<int> kv_shape = {1, kv_dim};
@@ -48,8 +47,8 @@ namespace hxinfer{
             curr_k_ = std::make_shared<Tensor>(allocator, kv_shape, activation_dtype_);
             curr_v_ = std::make_shared<Tensor>(allocator, kv_shape, activation_dtype_);
             std::vector<int> cache_shapes = {max_seq_len, kv_dim};
-            k_cache_ = std::make_shared<Tensor>(allocator, cache_shapes, activation_dtype_);
-            v_cache_ = std::make_shared<Tensor>(allocator, cache_shapes, activation_dtype_);
+            k_cache_ = std::make_shared<Tensor>(allocator, cache_shapes, DataType::kDataTypeFP32);
+            v_cache_ = std::make_shared<Tensor>(allocator, cache_shapes, DataType::kDataTypeFP32);
             after_qktv_ = std::make_shared<Tensor>(allocator, q_shape, activation_dtype_);
             DeviceType dev = allocator->device_type();
             curr_q_->tensor_set_device_type(dev);
@@ -73,8 +72,7 @@ namespace hxinfer{
                 has_bias_(true), bq_(bq), bk_(bk), bv_(bv){
             int dim        = config_.dim;
             int max_seq_len = config_.seq_len;
-            activation_dtype_ = (wq_->tensor_data_type() == DataType::kDataTypeFP16)
-                                ? DataType::kDataTypeFP16 : DataType::kDataTypeFP32;
+            activation_dtype_ = DataType::kDataTypeFP32;  // Force FP32
             int kv_dim = config_.kv_head * (config_.dim / config_.head);
             std::vector<int> q_shape = {1, dim};
             std::vector<int> kv_shape = {1, kv_dim};
@@ -82,8 +80,8 @@ namespace hxinfer{
             curr_k_ = std::make_shared<Tensor>(allocator, kv_shape, activation_dtype_);
             curr_v_ = std::make_shared<Tensor>(allocator, kv_shape, activation_dtype_);
             std::vector<int> cache_shapes = {max_seq_len, kv_dim};
-            k_cache_ = std::make_shared<Tensor>(allocator, cache_shapes, activation_dtype_);
-            v_cache_ = std::make_shared<Tensor>(allocator, cache_shapes, activation_dtype_);
+            k_cache_ = std::make_shared<Tensor>(allocator, cache_shapes, DataType::kDataTypeFP32);
+            v_cache_ = std::make_shared<Tensor>(allocator, cache_shapes, DataType::kDataTypeFP32);
             after_qktv_ = std::make_shared<Tensor>(allocator, q_shape, activation_dtype_);
             DeviceType dev = allocator->device_type();
             curr_q_->tensor_set_device_type(dev);

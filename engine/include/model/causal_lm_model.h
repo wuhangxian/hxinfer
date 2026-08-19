@@ -32,9 +32,7 @@ namespace hxinfer{
                    blocks_(block),final_norm_(final_norm),lm_head_(lm_head),
                    config_(config){
             int dim=config_.dim;
-            activation_dtype_ = (!blocks_.empty() &&
-                blocks_[0]->get_attention()->get_k_cache()->tensor_data_type() == DataType::kDataTypeFP16)
-                ? DataType::kDataTypeFP16 : DataType::kDataTypeFP32;
+            activation_dtype_ = DataType::kDataTypeFP32;
             std::vector<int> hidden_shape={1,dim};
             ping_=std::make_shared<Tensor>(allocator,hidden_shape,activation_dtype_);
             pang_=std::make_shared<Tensor>(allocator,hidden_shape,activation_dtype_);

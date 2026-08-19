@@ -8,7 +8,7 @@ namespace hxinfer{
 
 __global__ void fp32_to_fp16_kernel(const float* in, __half* out, int n){
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
-    if(idx < n) out[idx] = __float2half(in[idx]);
+    if(idx < n){ float v = in[idx]; if(!isfinite(v) || v > 65504.0f) v = 65504.0f; if(v < -65504.0f) v = -65504.0f; out[idx] = __float2half(v); }
 }
 
 // 通用 matmul：根据输入和权重的数据类型自动选择路径

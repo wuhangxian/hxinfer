@@ -193,3 +193,116 @@ export HXINFER_DATA_DIR=/path/to/model
 ## License
 
 MIT
+
+---
+
+## v1.1.0 更新日志 — 精度修复与 ShareGPT 对比测试
+
+### 修复的 Bug
+
+#### Bug 1: RoPE 位置编码实现错误（GPT-J style → NeoX style）
+
+**现象**：LLaMA-2-7B 在长 prompt 下输出乱码（`Л` 字符堆叠），Qwen2.5-7B 全量乱码（`缁勭粍` 重复）。
+
+**根因**：RoPE kernel 实现成了 GPT-J style（相邻配对 `(d, d+1)`），而 LLaMA-2/Qwen2.5 使用 NeoX style（前后半配对 `(d, d+half_dim)`）。两种方式的维度排列和频率公式不同：
+
+- GPT-J（错误）：`freq = 1/base^(d/head_dim)`，配对 `(0,1), (2,3), ...`
+- NeoX（正确）：`freq = 1/base^(2d/head_dim)`，配对 `(0,64), (1,65), ...`
+
+位置编码错位导致 attention 注意力分布错误，模型 attend 到错误的 token。
+
+**修复**：重写 `rope_cuda.cu`，改为 NeoX-style 维度排列。
+
+#### Bug 2: FP16 残差溢出导致 NaN
+
+**现象**：prompt 超过 ~150 tokens 后 logits 全部变成 NaN，argmax 持续返回 token 0（`<unk>`），输出 `<unk><unk>...`。
+
+**根因**：残差连接的累加路径全程 FP16，32 层残差累加后某些位置超过 FP16 上限 65504，产生 Inf → NaN。NaN 通过 RMSNorm 和 matmul 传播到所有后续层和位置。
+
+**修复**：
+- 实现 SGLang 风格的 `fused_add_rmsnorm` CUDA kernel（残差加法在 FP32 中完成，归一化后再转回 FP16）
+- 激活值和 KV cache 改为 FP32
+- `fp32_to_fp16_kernel` 加 clamp（`±65504`）防止溢出
+
+#### Bug 3: Qwen2.5 QKV Bias 类型不匹配
+
+**现象**：Qwen2.5-7B 输出全乱码，logits 非 NaN 但 argmax 持续返回异常 token。
+
+**根因**：FP32 激活值修复后，QKV bias 仍为 FP16。`add_bias_cuda_fp32` 把 FP16 数据当 `float*` 读，读出垃圾值。
+
+**修复**：Qwen weight loader 中 bias 加载为 FP32。
+
+#### Bug 4: rope_scaling null 检查
+
+**现象**：LLaMA-2-7B 加载时崩溃（`json.exception.type_error.306`）。
+
+**根因**：`config.json` 中 `rope_scaling` 为 `null`，`cfg.contains("rope_scaling")` 返回 true 但后续 `.value()` 调用失败。
+
+**修复**：加 `!cfg["rope_scaling"].is_null()` 检查。
+
+### 测试环境
+
+| 项目 | 配置 |
+|------|------|
+| GPU | NVIDIA RTX PRO 5000 72GB Blackwell × 8 |
+| CPU | 768 核 |
+| 内存 | 2.2 TiB |
+| OS | Ubuntu 22.04 |
+| CUDA | 13.0 |
+| SGLang | v0.5.17-cu130 |
+| 模型 | LLaMA-2-7B-hf (FP16), Qwen2.5-7B-Instruct (BF16→FP16) |
+| 数据集 | ShareGPT V3 (94,145 条对话，随机采样 100 条，seed=42) |
+
+### LLaMA-2-7B ShareGPT 测试结果
+
+测试参数：prompt 截断 512 tokens，贪心解码 64 tokens，与 SGLang 对比。
+
+| 指标 | SGLang | hxinfer (修复前) | hxinfer (修复后) |
+|------|:------:|:------:|:------:|
+| 乱码 (Л chars) | 0 | 13 | **0** |
+| 纯净可读文本 | 90 | 25 | **90** |
+| NaN / token 0 | 0 | 27 | **0** |
+| 轻度非 ASCII | 4 | 47 | **5** |
+| 空白输出 | 6 | 0 | **5** |
+
+**结论**：修复后 hxinfer 与 SGLang 输出质量完全持平（90/100 纯净可读，0 乱码），输出内容几乎逐字一致。
+
+#### 输出对比示例
+
+| # | Prompt | SGLang | hxinfer |
+|---|--------|--------|--------|
+| 1 | what are some approaches to image deraining | "?\n\nI'm trying to remove the rain from an image..." | "?\n\nI'm trying to remove the rain from an image..." |
+| 8 | weekly meeting for 5-person team | "We are a mobile engineering team of 5 people..." | "We are a mobile engineering team of 5 people..." |
+| 10 | PURE PROTEIN bars description | "### 1. What is the name of the product?" | "### 1. What is the name of the product?" |
+
+### Qwen2.5-7B-Instruct ShareGPT 测试结果
+
+| 指标 | SGLang | hxinfer (修复后) |
+|------|:------:|:------:|
+| 乱码 | 1* | 1* |
+| 纯净可读 | 98 | **99** |
+| 轻度非 ASCII | 1 | 0 |
+
+\* 唯一的 "乱码" 是 prompt #87（中文代码优化请求），模型回复了中文，非真实乱码。
+
+**结论**：Qwen2.5-7B 修复后与 SGLang 完全持平。
+
+### 修改的文件列表
+
+| 文件 | 修改内容 |
+|------|----------|
+| `engine/src/op/cuda/rope_cuda.cu` | 重写为 NeoX-style RoPE kernel |
+| `engine/src/op/cuda/rmsnorm_cuda.cu` | 新增 fused_add_rmsnorm kernel（SGLang 风格） |
+| `engine/src/op/cuda/matmul_cuda.cu` | fp32_to_fp16_kernel 加 clamp 防溢出 |
+| `engine/include/layer/attention.h` | 激活值和 KV cache 改为 FP32 |
+| `engine/include/layer/transformer.h` | 新增 residual_ buffer，使用 fused_add_rmsnorm |
+| `engine/include/layer/rmsnorm.h` | 新增 get_weight() 接口 |
+| `engine/include/model/causal_lm_model.h` | 激活值改为 FP32 |
+| `engine/include/op/math_ops.h` | 新增 fused_add_rmsnorm 声明 |
+| `engine/src/layer/transformer.cpp` | 使用 fused residual + RMSNorm 替代独立 add+rmsnorm |
+| `engine/src/layer/swiglu.cpp` | 中间激活值改为 FP32 |
+| `engine/src/op/rmsnorm_tensor.cpp` | 新增 fused_add_rmsnorm_tensor dispatch |
+| `engine/src/layer/attention.cpp` | bias add 的 size 变量修正 |
+| `model_loaders/src/llama_weight_loader.cpp` | rope_scaling null 检查 |
+| `model_loaders/src/qwen_weight_loader.cpp` | QKV bias 加载改为 FP32 |
+| `demos/` | 清理 debug 文件，学习练习移至 `demos/learning/` |

@@ -37,7 +37,7 @@ std::shared_ptr<LlamaModel> LlamaWeightLoader::load(
     out_config.seq_len    = 4096;
     out_config.rope_theta = cfg.value("rope_theta", 10000.0f);
 
-    if (cfg.contains("rope_scaling")) {
+    if (cfg.contains("rope_scaling") && !cfg["rope_scaling"].is_null()) {
         auto& rs = cfg["rope_scaling"];
         std::string rs_type = rs.value("type", rs.value("rope_type", ""));
         if (rs_type == "yarn") {

@@ -15,6 +15,11 @@
 
 using namespace hxinfer;
 
+static std::vector<int> apply_chat_template(QwenTokenizer& tok, const std::string& user_msg) {
+    std::string chat = "<|im_start|>user\n" + user_msg + "<|im_end|>\n<|im_start|>assistant\n";
+    return tok.encode(chat);
+}
+
 int main(int argc, char** argv) {
     const char* env_data = std::getenv("HXINFER_DATA_DIR");
     std::string DATA_DIR = env_data ? std::string(env_data) : "/workspace/models/Qwen2.5-7B-Instruct";
@@ -39,8 +44,7 @@ int main(int argc, char** argv) {
     input_gpu->tensor_set_device_type(DeviceType::kDeviceCUDA);
     logits->tensor_set_device_type(DeviceType::kDeviceCUDA);
 
-    std::vector<int> tokens = tokenizer.encode(PROMPT);
-    tokens.insert(tokens.begin(), tokenizer.bos_id());
+    std::vector<int> tokens = apply_chat_template(tokenizer, PROMPT);
 
     std::cout << "\nPrompt: \"" << PROMPT << "\"" << std::endl;
     std::cout << "Tokens: " << tokens.size() << std::endl;

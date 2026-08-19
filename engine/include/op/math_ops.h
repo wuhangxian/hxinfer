@@ -71,6 +71,22 @@ namespace hxinfer{
                               std::shared_ptr<Tensor>& v_cache,
                               std::shared_ptr<Tensor>& output,
                               ModelConfig& config,int pos);
+    // Fused Add + RMSNorm (SGLang-style)
+    void fused_add_rmsnorm_cuda(
+            std::shared_ptr<Tensor>& hidden_states,
+            std::shared_ptr<Tensor>& residual,
+            std::shared_ptr<Tensor>& hidden_out,
+            std::shared_ptr<Tensor>& residual_out,
+            const std::shared_ptr<Tensor>& weight,
+            float eps=1e-5);
+    void fused_add_rmsnorm_tensor(
+            std::shared_ptr<Tensor>& hidden_states,
+            std::shared_ptr<Tensor>& residual,
+            std::shared_ptr<Tensor>& hidden_out,
+            std::shared_ptr<Tensor>& residual_out,
+            const std::shared_ptr<Tensor>& weight,
+            float eps=1e-5);
+
 }
 
 #endif //HXINFER_MATH_OPS_H
