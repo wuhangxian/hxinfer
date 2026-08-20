@@ -27,6 +27,7 @@ include_directories(
     ${CMAKE_SOURCE_DIR}/hxinfer-engine/include
     ${CMAKE_SOURCE_DIR}/model_loaders/include
     ${CMAKE_SOURCE_DIR}/tokenizer/include
+    ${CMAKE_SOURCE_DIR}/server/include
 )
 
 # ==================== Engine Core Library ====================
@@ -58,6 +59,14 @@ target_link_libraries(hxinfer_loaders hxinfer_core)
 file(GLOB_RECURSE TOKENIZER_SRC "tokenizer/src/*.cpp")
 add_library(hxinfer_tokenizer STATIC ${TOKENIZER_SRC})
 target_link_libraries(hxinfer_tokenizer sentencepiece)
+
+# ==================== HTTP Server ====================
+file(GLOB SERVER_SRC "server/src/*.cpp")
+add_library(hxinfer_server STATIC ${SERVER_SRC})
+target_link_libraries(hxinfer_server hxinfer_core hxinfer_loaders hxinfer_tokenizer pthread)
+
+add_executable(hxinfer-server server/src/main_server.cpp)
+target_link_libraries(hxinfer-server hxinfer_server pthread)
 
 # ==================== Demos ====================
 file(GLOB DEMO_SOURCES "demos/*.cpp" "demos/*.cu")
