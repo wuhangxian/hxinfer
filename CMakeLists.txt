@@ -72,3 +72,17 @@ foreach(demo_src ${DEMO_SOURCES})
         CUDA::cublas
     )
 endforeach()
+
+# ==================== Tests ====================
+file(GLOB TEST_SOURCES "tests/unit/*.cpp" "tests/integration/*.cpp")
+foreach(test_src ${TEST_SOURCES})
+    get_filename_component(test_name ${test_src} NAME_WE)
+    add_executable(${test_name} ${test_src})
+    target_link_libraries(${test_name}
+        hxinfer_core
+        hxinfer_loaders
+        hxinfer_tokenizer
+        CUDA::cudart
+        CUDA::cublas
+    )
+endforeach()
